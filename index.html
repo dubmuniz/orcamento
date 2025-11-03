@@ -37,7 +37,7 @@
 <body>
   <header class="wrap">
     <h1>Orçamento por Categoria</h1>
-    <p class="lead">Anexe o XLSX do Marco Lógico. Custos agregados por categoria, compras em mês único.</p>
+    <p class="lead">Anexe o XLSX do Marco Lógico. Custos por categoria, itens propostos automaticamente, compras em mês único.</p>
   </header>
 
   <main class="wrap">
@@ -96,48 +96,36 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
-    // Config opcional
-    const WEBHOOK_URL = "https://hook.us2.make.com/SEU_WEBHOOK_AQUI";
+    const WEBHOOK_URL = "https://hook.us2.make.com/SEU_WEBHOOK_AQUI"; // opcional
 
-    // Utils
     const norm = s => String(s || "").replace(/\s+/g, " ").trim();
     const moeda = v => Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
-    // Leitura do XLSX do Marco Lógico
+    // Lê atividades do XLSX exportado do seu gerador (linha de atividade: ['', Título, Descrição, Lógica, Prazo, MOV])
     function parseMarcoLogicoWB(wb) {
       const sheetName = wb.SheetNames.find(n => /marco/i.test(n)) || wb.SheetNames[0];
       const ws = wb.Sheets[sheetName];
       const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false });
 
-      // Busca linhas de atividades no formato exportado: ['', Título, Descrição, Lógica, Prazo, MOV]
       const itens = [];
       for (const row of aoa) {
         const line = row.map(c => String(c || "").trim());
         const titulo = line[1];
         const prazo = line[4];
-        if (line[0] === "" && titulo && prazo) {
-          itens.push({ tipo: "Atividade", titulo, prazo });
-        }
+        if (line[0] === "" && titulo && prazo) itens.push({ tipo: "Atividade", titulo, prazo });
       }
       return itens;
     }
 
-    // Interpretação de prazos
+    // Converte prazos em intervalo de meses
     function spanMeses(prazo, total) {
       const p = String(prazo || "").toLowerCase();
       let ini = 1, fim = total;
 
       const m = p.match(/m(\d+)\s*-\s*m?(\d+)/i);
-      if (m) {
-        ini = +m[1];
-        fim = +m[2];
-      } else if (/até m(\d+)/.test(p)) {
-        ini = 1;
-        fim = +p.match(/até m(\d+)/)[1];
-      } else if (/a partir de m(\d+)/.test(p)) {
-        ini = +p.match(/a partir de m(\d+)/)[1];
-        fim = total;
-      }
+      if (m) { ini = +m[1]; fim = +m[2]; }
+      else if (/até m(\d+)/.test(p)) { ini = 1; fim = +p.match(/até m(\d+)/)[1]; }
+      else if (/a partir de m(\d+)/.test(p)) { ini = +p.match(/a partir de m(\d+)/)[1]; fim = total; }
 
       if (ini < 1) ini = 1;
       if (fim > total) fim = total;
@@ -145,47 +133,61 @@
       return { ini, fim };
     }
 
-    // Mapeamento de itens por categoria
-    function classificarBlocos(ativ) {
+    // Proposição de itens por atividade -> retorna blocos com categoria, tipo (servico|compra), item, unidade e valor base
+    function proporItens(ativ) {
       const t = ativ.titulo.toLowerCase();
-      const blocos = [];
+      const B = [];
 
-      // RH
-      if (/planej|gest|coord|monitor|avalia|gerenc/.test(t)) {
-        blocos.push({ cat: "Recursos Humanos", tipo: "servico", vlPad: 7500 });
+      // Recursos Humanos
+      if (/planej|gest|coord|gerenc|admin|monitor|avalia/.test(t)) {
+        B.push({ cat: "Recursos Humanos", tipo: "servico", item: "Coordenador Geral", unidade: "mês", vl: 8000 });
+        B.push({ cat: "Recursos Humanos", tipo: "servico", item: "Assistente Administrativo", unidade: "mês", vl: 3500 });
+      }
+      if (/campo|implant|execu|piloto/.test(t)) {
+        B.push({ cat: "Recursos Humanos", tipo: "servico", item: "Técnico de Campo", unidade: "mês", vl: 4500 });
+      }
+      if (/comunic|divulga|evento/.test(t)) {
+        B.push({ cat: "Recursos Humanos", tipo: "servico", item: "Comunicador/Designer", unidade: "mês", vl: 4200 });
       }
 
-      // Serviços
-      if (/capacit|oficina|trein|curso|comunic|divulga|evento|culmin/.test(t)) {
-        blocos.push({ cat: "Prestação de Serviços", tipo: "servico", vlPad: 1500 });
+      // Prestação de Serviços
+      if (/capacit|oficina|trein|curso/.test(t)) {
+        B.push({ cat: "Prestação de Serviços", tipo: "servico", item: "Facilitador Externo", unidade: "diária", vl: 1200 });
+        B.push({ cat: "Prestação de Serviços", tipo: "servico", item: "Locação de Espaço", unidade: "diária", vl: 800 });
+      }
+      if (/comunic|divulga|video|foto|site/.test(t)) {
+        B.push({ cat: "Prestação de Serviços", tipo: "servico", item: "Design/Produção de Materiais", unidade: "lote", vl: 1500 });
       }
 
-      // Materiais
-      if (/materia|insumo|kit/.test(t)) {
-        blocos.push({ cat: "Materiais e Insumos", tipo: "compra", vlPad: 800 });
+      // Materiais e Insumos
+      if (/materia|insumo|oficina|kit|impress/.test(t)) {
+        B.push({ cat: "Materiais e Insumos", tipo: "compra", item: "Materiais Pedagógicos", unidade: "kit", vl: 900 });
+        B.push({ cat: "Materiais e Insumos", tipo: "compra", item: "Impressões/Gráfica", unidade: "lote", vl: 700 });
       }
 
-      // Equipamentos: compra única ou aluguel mensal
-      if (/equip|implant|piloto|instala|compra/.test(t)) {
-        blocos.push({ cat: "Equipamentos", tipo: "compra", vlPad: 3000 });
+      // Equipamentos
+      if (/equip|comput|notebook|instala|infra|rede/.test(t)) {
+        B.push({ cat: "Equipamentos", tipo: "compra", item: "Notebook", unidade: "un", vl: 3800 });
+        B.push({ cat: "Equipamentos", tipo: "compra", item: "Impressora", unidade: "un", vl: 2200 });
       }
-      if (/alug|loca/.test(t)) {
-        blocos.push({ cat: "Equipamentos", tipo: "servico", vlPad: 900 });
+      if (/alug|loca|sonoriz|projetor/.test(t)) {
+        B.push({ cat: "Equipamentos", tipo: "servico", item: "Aluguel de Equipamentos", unidade: "mês", vl: 900 });
       }
 
-      // Transporte e outros
+      // Outros
       if (/desloc|campo|visita|viagem/.test(t)) {
-        blocos.push({ cat: "Outros", tipo: "servico", vlPad: 600 });
+        B.push({ cat: "Outros", tipo: "servico", item: "Deslocamento Equipe", unidade: "viagem", vl: 600 });
+        B.push({ cat: "Outros", tipo: "servico", item: "Diárias", unidade: "diária", vl: 250 });
       }
 
-      if (blocos.length === 0) {
-        blocos.push({ cat: "Outros", tipo: "servico", vlPad: 1000 });
+      if (B.length === 0) {
+        B.push({ cat: "Outros", tipo: "servico", item: "Custos Operacionais", unidade: "mês", vl: 1000 });
       }
-      return blocos;
+      return B;
     }
 
-    // Agregação por categoria
-    function agregarPorCategoria(itensML, meses) {
+    // Agregação por categoria com lista de itens propostos
+    function agregarPorCategoriaComItens(itensML, meses) {
       const ordem = [
         "Recursos Humanos",
         "Prestação de Serviços",
@@ -195,28 +197,28 @@
       ];
 
       const catMap = new Map(
-        ordem.map(c => [c, { categoria: c, meses: Array(meses).fill(0), total: 0 }])
+        ordem.map(c => [c, { categoria: c, meses: Array(meses).fill(0), total: 0, itens: new Set() }])
       );
 
       for (const it of itensML) {
         const { ini, fim } = spanMeses(it.prazo, meses);
-        const blocos = classificarBlocos(it);
+        const blocos = proporItens(it);
 
         for (const b of blocos) {
           const row = catMap.get(b.cat);
+          row.itens.add(b.item);
 
           if (b.tipo === "servico") {
-            // recorrente ao longo do intervalo
-            for (let m = ini - 1; m < fim; m++) row.meses[m] += b.vlPad;
+            // recorrente
+            for (let m = ini - 1; m < fim; m++) row.meses[m] += b.vl;
           } else {
-            // compra única, concentrada no primeiro mês do intervalo
+            // compra única
             const mAlvo = ini - 1;
-            row.meses[mAlvo] += b.vlPad;
+            row.meses[mAlvo] += b.vl;
           }
         }
       }
 
-      // totais
       for (const row of catMap.values()) {
         row.total = row.meses.reduce((a, v) => a + v, 0);
       }
@@ -228,10 +230,21 @@
         somaTotal += row.total;
       }
 
-      return { linhas: ordem.map(c => catMap.get(c)), somaMes, somaTotal };
+      // transforma Set em string ordenada
+      const linhas = ordem.map(c => {
+        const r = catMap.get(c);
+        return {
+          categoria: r.categoria,
+          itens: Array.from(r.itens).sort().join(", "),
+          meses: r.meses,
+          total: r.total
+        };
+      });
+
+      return { linhas, somaMes, somaTotal };
     }
 
-    // Tabela
+    // Tabela com coluna "Itens"
     function renderTabela(orc, meses) {
       const thead = document.querySelector("#tbl thead");
       const tbody = document.querySelector("#tbl tbody");
@@ -240,7 +253,7 @@
 
       const h = document.createElement("tr");
       h.innerHTML =
-        `<th>Categoria</th>` +
+        `<th>Categoria</th><th>Itens</th>` +
         Array.from({ length: meses }, (_, i) => `<th>M${i + 1}</th>`).join("") +
         `<th>Total</th>`;
       thead.appendChild(h);
@@ -248,7 +261,7 @@
       for (const l of orc.linhas) {
         const tr = document.createElement("tr");
         tr.innerHTML =
-          `<td>${l.categoria}</td>` +
+          `<td>${l.categoria}</td><td>${l.itens || ""}</td>` +
           l.meses.map(v => `<td>${moeda(v)}</td>`).join("") +
           `<td><b>${moeda(l.total)}</b></td>`;
         tbody.appendChild(tr);
@@ -256,7 +269,7 @@
 
       const trS = document.createElement("tr");
       trS.innerHTML =
-        `<td><b>TOTAL</b></td>` +
+        `<td colspan="2"><b>TOTAL</b></td>` +
         orc.somaMes.map(v => `<td><b>${moeda(v)}</b></td>`).join("") +
         `<td><b>${moeda(orc.somaTotal)}</b></td>`;
       tbody.appendChild(trS);
@@ -264,27 +277,27 @@
       document.getElementById("previewBox").style.display = "block";
     }
 
-    // Downloads
+    // Exporta com coluna "Itens"
     function baixarXLSX(orc, nome, meses) {
       const aoa = [];
-      aoa.push(["Orçamento por Categoria"]);
+      aoa.push(["Orçamento por Categoria com Itens"]);
       aoa.push([]);
       aoa.push(
-        ["Categoria"]
+        ["Categoria", "Itens"]
           .concat(Array.from({ length: meses }, (_, i) => `M${i + 1}`))
           .concat(["Total"])
       );
 
       for (const l of orc.linhas) {
-        aoa.push([l.categoria].concat(l.meses).concat([l.total]));
+        aoa.push([l.categoria, l.itens].concat(l.meses).concat([l.total]));
       }
-      aoa.push(["TOTAL"].concat(orc.somaMes).concat([orc.somaTotal]));
+      aoa.push(["TOTAL", ""].concat(orc.somaMes).concat([orc.somaTotal]));
 
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(aoa);
-      ws["!cols"] = [{ wch: 28 }].concat(
-        Array.from({ length: meses }, () => ({ wch: 12 }))
-      ).concat([{ wch: 14 }]);
+      ws["!cols"] = [{ wch: 28 }, { wch: 48 }]
+        .concat(Array.from({ length: meses }, () => ({ wch: 12 })))
+        .concat([{ wch: 14 }]);
 
       XLSX.utils.book_append_sheet(wb, ws, "Orcamento");
       const safe = (nome || "Projeto").replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
@@ -292,12 +305,12 @@
     }
 
     function baixarCSV(orc, nome, meses) {
-      const cols = ["Categoria"]
+      const cols = ["Categoria", "Itens"]
         .concat(Array.from({ length: meses }, (_, i) => `M${i + 1}`))
         .concat(["Total"]);
 
-      const rows = orc.linhas.map(l => [l.categoria].concat(l.meses).concat([l.total]));
-      const total = ["TOTAL"].concat(orc.somaMes).concat([orc.somaTotal]);
+      const rows = orc.linhas.map(l => [l.categoria, l.itens].concat(l.meses).concat([l.total]));
+      const total = ["TOTAL", ""].concat(orc.somaMes).concat([orc.somaTotal]);
 
       const csv = [cols].concat(rows).concat([total])
         .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
@@ -312,11 +325,11 @@
     }
 
     // Eventos
-    const frm   = document.getElementById("frm");
-    const statusEl = document.getElementById("status");
-    const diagBox  = document.getElementById("diagBox");
-    const dlX = document.getElementById("dlXlsx");
-    const dlC = document.getElementById("dlCsv");
+    const frm     = document.getElementById("frm");
+    const statusEl= document.getElementById("status");
+    const diagBox = document.getElementById("diagBox");
+    const dlX     = document.getElementById("dlXlsx");
+    const dlC     = document.getElementById("dlCsv");
 
     let ultimoOrc = null;
     let ultimoMeses = 12;
@@ -344,15 +357,13 @@
         const obs = norm(document.getElementById("obs").value);
         const f = document.getElementById("mlfile").files?.[0];
 
-        if (!nomeProjeto || !f || !meses) {
-          throw new Error("Preencha nome, duração e anexe o XLSX do Marco Lógico.");
-        }
+        if (!nomeProjeto || !f || !meses) throw new Error("Preencha nome, duração e anexe o XLSX do Marco Lógico.");
 
         const buf = await f.arrayBuffer();
         const wb = XLSX.read(buf, { type: "array" });
         const itensML = parseMarcoLogicoWB(wb);
 
-        // opcional: envio ao Make para cálculo com IA
+        // opcional: enviar ao Make para IA avançada
         try {
           const payload = {
             nomeProjeto: nomeProjeto,
@@ -368,8 +379,8 @@
           });
         } catch (_) {}
 
-        // geração local
-        const orc = agregarPorCategoria(itensML, meses);
+        // geração local com itens propostos
+        const orc = agregarPorCategoriaComItens(itensML, meses);
         ultimoOrc = orc;
 
         renderTabela(orc, meses);
@@ -390,4 +401,5 @@
   </script>
 </body>
 </html>
+
 
