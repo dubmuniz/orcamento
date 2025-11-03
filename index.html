@@ -1,42 +1,43 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8">
-  <title>Orçamento a partir do Marco Lógico</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <meta charset="utf-8" />
+  <title>Orçamento por Categoria — Marco Lógico</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
   <style>
-    :root{--green:#1E7E34;--ink:#1b1b1b;--bg:#fafafa;--muted:#667085}
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
-    .wrap{max-width:1100px;margin:0 auto;padding:20px}
-    header{text-align:center;padding:16px 0}
-    h1{margin:0 0 8px;font-size:26px}
-    .lead{color:var(--muted)}
-    form{background:#fff;border:1px solid #eee;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
-    label{display:block;margin:12px 0 6px;font-weight:600}
-    input,textarea,select{width:100%;border:1px solid #d8dee4;border-radius:8px;padding:10px;font:inherit}
-    textarea{min-height:110px;resize:vertical}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-    button{background:var(--green);color:#fff;border:0;border-radius:10px;padding:12px 18px;font-weight:600;cursor:pointer;font-size:16px}
-    button:disabled{opacity:.6;cursor:not-allowed}
-    .status{min-height:22px;color:var(--muted);margin:10px 0 0;font-size:14px}
-    .status.error{color:#c62828}.status.success{color:var(--green)}
-    .debug{background:#f7f7f7;border:1px solid #e5e7eb;border-radius:10px;padding:12px;font:12px/1.4 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-word;max-height:360px;overflow:auto;display:none}
-    .table{margin-top:14px;background:#fff;border:1px solid #eee;border-radius:10px;overflow:auto}
-    table{width:100%;border-collapse:collapse;font-size:13px}
-    th,td{border-bottom:1px solid #eee;padding:8px 10px;vertical-align:top;word-break:break-word}
-    th{background:#f6fbf6;color:#0f5132;text-align:left;position:sticky;top:0}
-    td{white-space:pre-wrap}
-    .right{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+    :root { --green:#1E7E34; --ink:#1b1b1b; --bg:#fafafa; --muted:#667085 }
+    * { box-sizing:border-box }
+    body { margin:0; background:var(--bg); color:var(--ink); font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif }
+    .wrap { max-width:1100px; margin:0 auto; padding:20px }
+    header { text-align:center; padding:16px 0 }
+    h1 { margin:0 0 8px; font-size:26px }
+    .lead { color:var(--muted) }
+    form { background:#fff; border:1px solid #eee; border-radius:12px; padding:18px; box-shadow:0 2px 8px rgba(0,0,0,.04) }
+    label { display:block; margin:12px 0 6px; font-weight:600 }
+    input, textarea, select { width:100%; border:1px solid #d8dee4; border-radius:8px; padding:10px; font:inherit }
+    textarea { min-height:110px; resize:vertical }
+    .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px }
+    button { background:var(--green); color:#fff; border:0; border-radius:10px; padding:12px 18px; font-weight:600; cursor:pointer; font-size:16px }
+    button:disabled { opacity:.6; cursor:not-allowed }
+    .status { min-height:22px; color:var(--muted); margin:10px 0 0; font-size:14px }
+    .status.error { color:#c62828 }
+    .status.success { color:var(--green) }
+    .debug { background:#f7f7f7; border:1px solid #e5e7eb; border-radius:10px; padding:12px; font:12px/1.4 ui-monospace,Consolas,monospace; white-space:pre-wrap; word-break:break-word; max-height:360px; overflow:auto; display:none }
+    .table { margin-top:14px; background:#fff; border:1px solid #eee; border-radius:10px; overflow:auto }
+    table { width:100%; border-collapse:collapse; font-size:13px }
+    th, td { border-bottom:1px solid #eee; padding:8px 10px; vertical-align:top; word-break:break-word }
+    th { background:#f6fbf6; color:#0f5132; text-align:left; position:sticky; top:0 }
+    td { white-space:pre-wrap }
+    .right { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap }
   </style>
 </head>
 <body>
   <header class="wrap">
-    <h1>Gerar Orçamento a partir do Marco Lógico</h1>
-    <p class="lead">Carregue o XLSX do Marco Lógico, adicione observações e gere uma planilha mensal.</p>
+    <h1>Orçamento por Categoria</h1>
+    <p class="lead">Anexe o XLSX do Marco Lógico. Custos agregados por categoria, compras em mês único.</p>
   </header>
 
   <main class="wrap">
@@ -44,7 +45,7 @@
       <div class="row3">
         <div>
           <label>Nome do Projeto *</label>
-          <input id="nomeProjeto" required placeholder="Ex.: Governança Climática nos Territórios">
+          <input id="nomeProjeto" required placeholder="Ex.: Governança Climática nos Territórios" />
         </div>
         <div>
           <label>Idioma de saída *</label>
@@ -58,16 +59,20 @@
           <label>Duração em meses *</label>
           <select id="dur" required>
             <option value="">Selecione</option>
-            <option>6</option><option selected>12</option><option>18</option><option>24</option><option>36</option>
+            <option>6</option>
+            <option selected>12</option>
+            <option>18</option>
+            <option>24</option>
+            <option>36</option>
           </select>
         </div>
       </div>
 
       <label>Marco Lógico em XLSX *</label>
-      <input type="file" id="mlfile" accept=".xlsx,.xls" required>
+      <input type="file" id="mlfile" accept=".xlsx,.xls" required />
 
-      <label>Observações para o orçamento</label>
-      <textarea id="obs" placeholder="Ex.: priorizar capacitação, incluir tradução, teto para RH 40%"></textarea>
+      <label>Observações</label>
+      <textarea id="obs" placeholder="Tetos percentuais, compras únicas, políticas de diárias"></textarea>
 
       <div class="right" style="margin-top:12px">
         <button id="btn">Gerar Orçamento</button>
@@ -78,7 +83,10 @@
     <div id="diagBox" class="debug"></div>
 
     <div id="previewBox" class="table" style="display:none">
-      <table id="tbl"><thead></thead><tbody></tbody></table>
+      <table id="tbl">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
       <div class="right" style="padding:10px">
         <button id="dlXlsx">Baixar XLSX</button>
         <button id="dlCsv">Baixar CSV</button>
@@ -87,232 +95,299 @@
   </main>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
   <script>
-    const WEBHOOK_URL = "https://hook.us2.make.com/6lkkytmbws4tvlep6aquy1yvt2l0glwm"; // opcional
+    // Config opcional
+    const WEBHOOK_URL = "https://hook.us2.make.com/SEU_WEBHOOK_AQUI";
 
-    // util
-    const norm = s => (String(s||"").replace(/\s+/g," ").trim());
-    const rngFrom = seed => { let a=0; for(let i=0;i<seed.length;i++) a=(a*1664525+seed.charCodeAt(i)+1013904223)>>>0; return ()=>{ a=(a*1664525+1013904223)>>>0; return (a>>>0)/4294967296; }; };
-    const moeda = v => Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v);
+    // Utils
+    const norm = s => String(s || "").replace(/\s+/g, " ").trim();
+    const moeda = v => Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
-    // leitura simples do XLSX exportado do seu gerador
-    function parseMarcoLogicoWB(wb){
-      // procura por sheet com "Marco" no nome
-      const sheetName = wb.SheetNames.find(n=>/marco/i.test(n)) || wb.SheetNames[0];
+    // Leitura do XLSX do Marco Lógico
+    function parseMarcoLogicoWB(wb) {
+      const sheetName = wb.SheetNames.find(n => /marco/i.test(n)) || wb.SheetNames[0];
       const ws = wb.Sheets[sheetName];
-      const aoa = XLSX.utils.sheet_to_json(ws,{header:1,raw:false});
-      // extrai OEs, Resultados, Atividades, Prazos
-      const items=[];
-      let currentOE=null, currentR=null;
-      for(const row of aoa){
-        const line = row.map(c=>String(c||'').trim());
-        const j = line.join(' | ');
-        if(/Objetivo Específico/i.test(j) && line[0]){
-          currentOE = {titulo: line[1]||line[0], resultados:[]};
-          items.push({tipo:'OE', titulo: currentOE.titulo});
-        }else if(/Resultados/i.test(j) && line[1]){
-          currentR = {titulo: line[1]};
-          items.push({tipo:'Resultado', titulo: currentR.titulo});
-        }else if(/Atividades/i.test(j)){
-          // marcador de seção
-        }else if(line[0]==='' && line[1] && line[2] && line[3] && line[4]){
-          // provável linha de atividade: [ '', Título, Descrição, Lógica, Prazo, MOV ]
-          items.push({tipo:'Atividade', titulo: line[1], prazo: line[4]||''});
+      const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false });
+
+      // Busca linhas de atividades no formato exportado: ['', Título, Descrição, Lógica, Prazo, MOV]
+      const itens = [];
+      for (const row of aoa) {
+        const line = row.map(c => String(c || "").trim());
+        const titulo = line[1];
+        const prazo = line[4];
+        if (line[0] === "" && titulo && prazo) {
+          itens.push({ tipo: "Atividade", titulo, prazo });
         }
       }
-      return items;
+      return itens;
     }
 
-    // heurísticas de orçamentação
-    function spanMeses(prazo, totalMeses){
-      // aceita "M1-3", "até M12", "a partir de M4"
-      prazo = String(prazo||'').toLowerCase();
-      let ini=1, fim=totalMeses;
-      const m = prazo.match(/m(\d+)\s*-\s*m?(\d+)/i);
-      if(m){ ini=+m[1]; fim=+m[2]; }
-      else if(/até m(\d+)/.test(prazo)){ ini=1; fim=+prazo.match(/até m(\d+)/)[1]; }
-      else if(/a partir de m(\d+)/.test(prazo)){ ini=+prazo.match(/a partir de m(\d+)/)[1]; fim=totalMeses; }
-      if(ini<1) ini=1; if(fim>totalMeses) fim=totalMeses; if(fim<ini) fim=ini;
-      return {ini,fim};
+    // Interpretação de prazos
+    function spanMeses(prazo, total) {
+      const p = String(prazo || "").toLowerCase();
+      let ini = 1, fim = total;
+
+      const m = p.match(/m(\d+)\s*-\s*m?(\d+)/i);
+      if (m) {
+        ini = +m[1];
+        fim = +m[2];
+      } else if (/até m(\d+)/.test(p)) {
+        ini = 1;
+        fim = +p.match(/até m(\d+)/)[1];
+      } else if (/a partir de m(\d+)/.test(p)) {
+        ini = +p.match(/a partir de m(\d+)/)[1];
+        fim = total;
+      }
+
+      if (ini < 1) ini = 1;
+      if (fim > total) fim = total;
+      if (fim < ini) fim = ini;
+      return { ini, fim };
     }
 
-    function estimarItens(ativ, rng){
+    // Mapeamento de itens por categoria
+    function classificarBlocos(ativ) {
       const t = ativ.titulo.toLowerCase();
-      const arr = [];
+      const blocos = [];
 
       // RH
-      if(/planej|gest|coord|monitor|avalia|gerenc/i.test(t)){
-        arr.push({categoria:"Recursos humanos", item:"Coordenador de projeto", unidade:"mês", qtd:1, valor:7500});
-      }
-      if(/capacit|form(a|á)|oficina|trein/i.test(t)){
-        arr.push({categoria:"Prestação de serviços", item:"Facilitador externo", unidade:"diária", qtd:2, valor:1200});
-        arr.push({categoria:"Materiais e insumos", item:"Materiais pedagógicos", unidade:"kit", qtd:1, valor:800});
-      }
-      if(/campo|implant|piloto|exec/i.test(t)){
-        arr.push({categoria:"Transporte", item:"Deslocamento equipe", unidade:"viagem", qtd:2, valor:600});
-        arr.push({categoria:"Equipamentos e serviços", item:"Aluguel de equipamentos", unidade:"mês", qtd:1, valor:900});
-      }
-      if(/comunic|divulga|evento|culmin/i.test(t)){
-        arr.push({categoria:"Comunicação e divulgação", item:"Materiais de divulgação", unidade:"lote", qtd:1, valor:1500});
-      }
-      if(arr.length===0){
-        // item genérico
-        arr.push({categoria:"Recursos humanos", item:"Técnico de campo", unidade:"mês", qtd:1, valor:4500});
+      if (/planej|gest|coord|monitor|avalia|gerenc/.test(t)) {
+        blocos.push({ cat: "Recursos Humanos", tipo: "servico", vlPad: 7500 });
       }
 
-      // pequena variação
-      arr.forEach(o=>{ const f = 0.9 + rng()*0.3; o.valor = Math.round(o.valor*f); });
-      return arr;
+      // Serviços
+      if (/capacit|oficina|trein|curso|comunic|divulga|evento|culmin/.test(t)) {
+        blocos.push({ cat: "Prestação de Serviços", tipo: "servico", vlPad: 1500 });
+      }
+
+      // Materiais
+      if (/materia|insumo|kit/.test(t)) {
+        blocos.push({ cat: "Materiais e Insumos", tipo: "compra", vlPad: 800 });
+      }
+
+      // Equipamentos: compra única ou aluguel mensal
+      if (/equip|implant|piloto|instala|compra/.test(t)) {
+        blocos.push({ cat: "Equipamentos", tipo: "compra", vlPad: 3000 });
+      }
+      if (/alug|loca/.test(t)) {
+        blocos.push({ cat: "Equipamentos", tipo: "servico", vlPad: 900 });
+      }
+
+      // Transporte e outros
+      if (/desloc|campo|visita|viagem/.test(t)) {
+        blocos.push({ cat: "Outros", tipo: "servico", vlPad: 600 });
+      }
+
+      if (blocos.length === 0) {
+        blocos.push({ cat: "Outros", tipo: "servico", vlPad: 1000 });
+      }
+      return blocos;
     }
 
-    function distribuirMeses(qtd, valor, ini, fim, totalMeses, unidade){
-      const meses = Array(totalMeses).fill(0);
-      // regra: se unidade é "mês", distribuir 1 por mês no intervalo
-      // se "diária" ou "viagem" ou "kit", concentrar de forma uniforme no intervalo
-      const span = fim - ini + 1;
-      if(/m[eê]s/.test(unidade)){
-        for(let m=ini-1;m<fim;m++){ meses[m] += valor; }
-        return meses;
-      }
-      const porMes = qtd/span;
-      for(let m=ini-1;m<fim;m++){
-        const q = m<ini-1 ? 0 : porMes;
-        meses[m] += q*valor;
-      }
-      return meses;
-    }
+    // Agregação por categoria
+    function agregarPorCategoria(itensML, meses) {
+      const ordem = [
+        "Recursos Humanos",
+        "Prestação de Serviços",
+        "Materiais e Insumos",
+        "Equipamentos",
+        "Outros"
+      ];
 
-    function gerarOrcamento(itensML, meses, seed){
-      const rng = rngFrom(seed);
-      const linhas=[];
-      for(const it of itensML.filter(x=>x.tipo==="Atividade")){
-        const {ini,fim} = spanMeses(it.prazo, meses);
-        const blocos = estimarItens(it, rng);
-        for(const b of blocos){
-          const mesesVals = distribuirMeses(b.qtd, b.valor, ini, fim, meses, b.unidade);
-          const total = mesesVals.reduce((a,v)=>a+v,0);
-          linhas.push({
-            categoria: b.categoria,
-            atividade: it.titulo,
-            item: b.item,
-            unidade: b.unidade,
-            quantidade: b.qtd,
-            valor_unitario: b.valor,
-            meses: mesesVals.map(v=>Math.round(v)),
-            total: Math.round(total)
-          });
+      const catMap = new Map(
+        ordem.map(c => [c, { categoria: c, meses: Array(meses).fill(0), total: 0 }])
+      );
+
+      for (const it of itensML) {
+        const { ini, fim } = spanMeses(it.prazo, meses);
+        const blocos = classificarBlocos(it);
+
+        for (const b of blocos) {
+          const row = catMap.get(b.cat);
+
+          if (b.tipo === "servico") {
+            // recorrente ao longo do intervalo
+            for (let m = ini - 1; m < fim; m++) row.meses[m] += b.vlPad;
+          } else {
+            // compra única, concentrada no primeiro mês do intervalo
+            const mAlvo = ini - 1;
+            row.meses[mAlvo] += b.vlPad;
+          }
         }
       }
-      // somatórios por coluna
+
+      // totais
+      for (const row of catMap.values()) {
+        row.total = row.meses.reduce((a, v) => a + v, 0);
+      }
+
       const somaMes = Array(meses).fill(0);
       let somaTotal = 0;
-      for(const l of linhas){ l.meses.forEach((v,i)=>somaMes[i]+=v); somaTotal+=l.total; }
-      return {linhas, somaMes, somaTotal};
+      for (const row of catMap.values()) {
+        row.meses.forEach((v, i) => (somaMes[i] += v));
+        somaTotal += row.total;
+      }
+
+      return { linhas: ordem.map(c => catMap.get(c)), somaMes, somaTotal };
     }
 
-    function renderTabela(orçamento, meses){
-      const thead = document.querySelector('#tbl thead');
-      const tbody = document.querySelector('#tbl tbody');
-      thead.innerHTML='';
-      tbody.innerHTML='';
-      const h = document.createElement('tr');
-      h.innerHTML = `<th>Categoria</th><th>Atividade</th><th>Item</th><th>Unid.</th><th>Qtd.</th><th>Vlr unit.</th>${Array.from({length:meses},(_,i)=>`<th>M${i+1}</th>`).join('')}<th>Total</th>`;
+    // Tabela
+    function renderTabela(orc, meses) {
+      const thead = document.querySelector("#tbl thead");
+      const tbody = document.querySelector("#tbl tbody");
+      thead.innerHTML = "";
+      tbody.innerHTML = "";
+
+      const h = document.createElement("tr");
+      h.innerHTML =
+        `<th>Categoria</th>` +
+        Array.from({ length: meses }, (_, i) => `<th>M${i + 1}</th>`).join("") +
+        `<th>Total</th>`;
       thead.appendChild(h);
 
-      for(const l of orçamento.linhas){
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${l.categoria}</td><td>${l.atividade}</td><td>${l.item}</td><td>${l.unidade}</td><td>${l.quantidade}</td><td>${moeda(l.valor_unitario)}</td>${l.meses.map(v=>`<td>${moeda(v)}</td>`).join('')}<td><b>${moeda(l.total)}</b></td>`;
+      for (const l of orc.linhas) {
+        const tr = document.createElement("tr");
+        tr.innerHTML =
+          `<td>${l.categoria}</td>` +
+          l.meses.map(v => `<td>${moeda(v)}</td>`).join("") +
+          `<td><b>${moeda(l.total)}</b></td>`;
         tbody.appendChild(tr);
       }
-      const trS = document.createElement('tr');
-      trS.innerHTML = `<td colspan="6"><b>TOTAL</b></td>${orçamento.somaMes.map(v=>`<td><b>${moeda(v)}</b></td>`).join('')}<td><b>${moeda(orçamento.somaTotal)}</b></td>`;
+
+      const trS = document.createElement("tr");
+      trS.innerHTML =
+        `<td><b>TOTAL</b></td>` +
+        orc.somaMes.map(v => `<td><b>${moeda(v)}</b></td>`).join("") +
+        `<td><b>${moeda(orc.somaTotal)}</b></td>`;
       tbody.appendChild(trS);
-      document.getElementById('previewBox').style.display='block';
+
+      document.getElementById("previewBox").style.display = "block";
     }
 
-    function baixarXLSX(orçamento, nome, meses){
+    // Downloads
+    function baixarXLSX(orc, nome, meses) {
       const aoa = [];
-      aoa.push(["Orçamento gerado a partir do Marco Lógico"]);
+      aoa.push(["Orçamento por Categoria"]);
       aoa.push([]);
-      const header = ["Categoria","Atividade","Item","Unidade","Quantidade","Valor unitário"].concat(Array.from({length:meses},(_,i)=>`M${i+1}`)).concat(["Total"]);
-      aoa.push(header);
-      for(const l of orçamento.linhas){
-        aoa.push([l.categoria,l.atividade,l.item,l.unidade,l.quantidade,l.valor_unitario].concat(l.meses).concat([l.total]));
+      aoa.push(
+        ["Categoria"]
+          .concat(Array.from({ length: meses }, (_, i) => `M${i + 1}`))
+          .concat(["Total"])
+      );
+
+      for (const l of orc.linhas) {
+        aoa.push([l.categoria].concat(l.meses).concat([l.total]));
       }
-      aoa.push(["TOTAL","","","","",""].concat(orçamento.somaMes).concat([orçamento.somaTotal]));
+      aoa.push(["TOTAL"].concat(orc.somaMes).concat([orc.somaTotal]));
+
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(aoa);
-      ws['!cols']=[{wch:24},{wch:38},{wch:28},{wch:8},{wch:8},{wch:12}].concat(Array.from({length:meses},()=>({wch:12}))).concat([{wch:14}]);
+      ws["!cols"] = [{ wch: 28 }].concat(
+        Array.from({ length: meses }, () => ({ wch: 12 }))
+      ).concat([{ wch: 14 }]);
+
       XLSX.utils.book_append_sheet(wb, ws, "Orcamento");
-      const safe=(nome||'Projeto').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30);
+      const safe = (nome || "Projeto").replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
       XLSX.writeFile(wb, `Orcamento_${safe}_${Date.now()}.xlsx`);
     }
 
-    function baixarCSV(orçamento, nome, meses){
-      const cols = ["Categoria","Atividade","Item","Unidade","Quantidade","Valor_unitario"].concat(Array.from({length:meses},(_,i)=>`M${i+1}`)).concat(["Total"]);
-      const rows = orçamento.linhas.map(l=>[l.categoria,l.atividade,l.item,l.unidade,l.quantidade,l.valor_unitario].concat(l.meses).concat([l.total]));
-      const total = ["TOTAL","","","","",""].concat(orçamento.somaMes).concat([orçamento.somaTotal]);
-      const csv = [cols].concat(rows).concat([total]).map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-      const a=document.createElement('a');
-      a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-      a.download=`Orcamento_${(nome||'Projeto').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)}_${Date.now()}.csv`;
-      document.body.appendChild(a); a.click(); a.remove();
+    function baixarCSV(orc, nome, meses) {
+      const cols = ["Categoria"]
+        .concat(Array.from({ length: meses }, (_, i) => `M${i + 1}`))
+        .concat(["Total"]);
+
+      const rows = orc.linhas.map(l => [l.categoria].concat(l.meses).concat([l.total]));
+      const total = ["TOTAL"].concat(orc.somaMes).concat([orc.somaTotal]);
+
+      const csv = [cols].concat(rows).concat([total])
+        .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+      a.download = `Orcamento_${(nome || "Projeto").replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30)}_${Date.now()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
     }
 
-    // eventos
-    const frm = document.getElementById('frm');
-    const statusEl = document.getElementById('status');
-    const diagBox = document.getElementById('diagBox');
-    const dlX = document.getElementById('dlXlsx');
-    const dlC = document.getElementById('dlCsv');
-    let ultimoOrc=null, ultimoMeses=12;
+    // Eventos
+    const frm   = document.getElementById("frm");
+    const statusEl = document.getElementById("status");
+    const diagBox  = document.getElementById("diagBox");
+    const dlX = document.getElementById("dlXlsx");
+    const dlC = document.getElementById("dlCsv");
 
-    dlX.addEventListener('click', ()=>{ if(ultimoOrc) baixarXLSX(ultimoOrc, document.getElementById('nomeProjeto').value, ultimoMeses); });
-    dlC.addEventListener('click', ()=>{ if(ultimoOrc) baixarCSV(ultimoOrc, document.getElementById('nomeProjeto').value, ultimoMeses); });
+    let ultimoOrc = null;
+    let ultimoMeses = 12;
 
-    frm.addEventListener('submit', async e=>{
+    dlX.addEventListener("click", () => {
+      if (ultimoOrc) baixarXLSX(ultimoOrc, document.getElementById("nomeProjeto").value, ultimoMeses);
+    });
+    dlC.addEventListener("click", () => {
+      if (ultimoOrc) baixarCSV(ultimoOrc, document.getElementById("nomeProjeto").value, ultimoMeses);
+    });
+
+    frm.addEventListener("submit", async e => {
       e.preventDefault();
-      try{
-        statusEl.textContent="Processando";
-        statusEl.classList.remove('error','success');
-        diagBox.style.display='none'; diagBox.textContent='';
+      try {
+        statusEl.textContent = "Processando";
+        statusEl.classList.remove("error", "success");
+        diagBox.style.display = "none";
+        diagBox.textContent = "";
 
-        const nomeProjeto = norm(document.getElementById('nomeProjeto').value);
-        const lang = document.getElementById('lang').value||'pt';
-        const meses = parseInt(document.getElementById('dur').value||'12',10); ultimoMeses = meses;
-        const obs = norm(document.getElementById('obs').value);
-        const f = document.getElementById('mlfile').files?.[0];
-        if(!nomeProjeto || !f || !meses) throw new Error("Preencha nome, duração e anexe o XLSX do Marco Lógico.");
+        const nomeProjeto = norm(document.getElementById("nomeProjeto").value);
+        const lang  = document.getElementById("lang").value || "pt";
+        const meses = parseInt(document.getElementById("dur").value || "12", 10);
+        ultimoMeses = meses;
+
+        const obs = norm(document.getElementById("obs").value);
+        const f = document.getElementById("mlfile").files?.[0];
+
+        if (!nomeProjeto || !f || !meses) {
+          throw new Error("Preencha nome, duração e anexe o XLSX do Marco Lógico.");
+        }
 
         const buf = await f.arrayBuffer();
-        const wb = XLSX.read(buf,{type:'array'});
+        const wb = XLSX.read(buf, { type: "array" });
         const itensML = parseMarcoLogicoWB(wb);
 
-        // opcional: enviar ao Make para geração com IA e preços dinâmicos
-        try{
-          const payload = {nomeProjeto, lang, meses, observacoes:obs, ml_xlsx_b64: btoa(String.fromCharCode(...new Uint8Array(buf)))};
-          await fetch(WEBHOOK_URL,{method:'POST',headers:{'Content-Type':'application/json'},body: JSON.stringify(payload)});
-        }catch(_){}
+        // opcional: envio ao Make para cálculo com IA
+        try {
+          const payload = {
+            nomeProjeto: nomeProjeto,
+            lang: lang,
+            meses: meses,
+            observacoes: obs,
+            ml_xlsx_b64: btoa(String.fromCharCode(...new Uint8Array(buf)))
+          };
+          await fetch(WEBHOOK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+        } catch (_) {}
 
-        // geração local dos itens e preços base
-        const seed = nomeProjeto + '|' + itensML.map(i=>i.titulo).join('|') + '|' + lang + '|' + meses;
-        const orc = gerarOrcamento(itensML, meses, seed);
-
+        // geração local
+        const orc = agregarPorCategoria(itensML, meses);
         ultimoOrc = orc;
-        renderTabela(orc, meses);
-        statusEl.textContent="✓ OK";
-        statusEl.classList.add('success');
 
-        diagBox.style.display='block';
-        diagBox.textContent = `Atividades detectadas: ${itensML.filter(x=>x.tipo==='Atividade').length}. Meses: ${meses}. Itens: ${orc.linhas.length}.`;
-      }catch(err){
-        statusEl.textContent="Erro: "+err.message;
-        statusEl.classList.add('error');
-        diagBox.style.display='block';
-        diagBox.textContent=(err.stack||String(err));
+        renderTabela(orc, meses);
+        statusEl.textContent = "✓ OK";
+        statusEl.classList.add("success");
+
+        diagBox.style.display = "block";
+        diagBox.textContent =
+          `Atividades: ${itensML.filter(x => x.tipo === "Atividade").length}. ` +
+          `Meses: ${meses}. Categorias com custo: ${orc.linhas.filter(l => l.total > 0).length}.`;
+      } catch (err) {
+        statusEl.textContent = "Erro: " + err.message;
+        statusEl.classList.add("error");
+        diagBox.style.display = "block";
+        diagBox.textContent = (err.stack || String(err));
       }
     });
   </script>
 </body>
 </html>
+
