@@ -36,7 +36,7 @@
 <body>
   <header class="wrap">
     <h1>Orçamento por Categoria</h1>
-    <p class="lead">Itens variados e realistas por categoria, deduplicação automática, compras em mês único.</p>
+    <p class="lead">Itens variados e realistas por categoria, deduplicação automática, compras não recorrentes.</p>
   </header>
 
   <main class="wrap">
@@ -71,19 +71,16 @@
       <input type="file" id="mlfile" accept=".xlsx,.xls" required />
 
       <label>Observações</label>
-      <textarea id="obs" placeholder="Tetos percentuais, compras únicas, políticas de diárias"></textarea>
+      <textarea id="obs" placeholder="Ex.: compras parceladas, faseamento de aquisições, regras de alocação."></textarea>
 
       <div class="right" style="margin-top:12px">
         <button id="btn">Gerar Orçamento</button>
       </div>
-      <p id="status" class="status"></p>
+      <p class="status"></p>
     </form>
 
     <div id="previewBox" class="table" style="display:none">
-      <table id="tbl">
-        <thead></thead>
-        <tbody></tbody>
-      </table>
+      <table id="tbl"><thead></thead><tbody></tbody></table>
       <div class="right" style="padding:10px">
         <button id="dlXlsx">Baixar XLSX</button>
         <button id="dlCsv">Baixar CSV</button>
@@ -93,108 +90,41 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
-    // Opcional, troque por seu webhook que consulta preços online
-    const WEBHOOK_URL = "https://hook.us2.make.com/uy3iducn5a5e819ux7cmoh9jjh82h33x";
+    const WEBHOOK_URL = "https://hook.us2.make.com/SEU_WEBHOOK_AQUI"; // opcional
 
-    const ORDEM = [
-      "Recursos Humanos",
-      "Prestação de Serviços",
-      "Materiais e Insumos",
-      "Equipamentos",
-      "Outros"
-    ];
-
+    const ORDEM = ["Recursos Humanos","Prestação de Serviços","Materiais e Insumos","Equipamentos","Outros"];
     const norm  = s => String(s || "").replace(/\s+/g, " ").trim();
     const moeda = v => Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
-    // Catálogo amplo com faixas BRL, médias urbanas 2024–2025
+    // Catálogo resumido mantendo os valores realistas
     const PRICE = {
-      RH: { // por mês
-        "Coordenador Geral":[9000,14000],
-        "Gerente de Projetos":[7500,12000],
-        "Gerente de Contratos":[7000,10000],
-        "Analista Financeiro":[5000,8000],
-        "Analista de Monitoramento":[5000,8000],
-        "Assistente Administrativo":[2800,4500],
-        "Técnico de Campo":[4000,5500],
-        "Pedagogo":[4800,7200],
-        "Comunicador Social":[4200,6000],
-        "Designer":[3800,5500],
-        "Motorista":[2500,3800],
-        "Auxiliar de Logística":[2300,3500],
-        "Estagiário":[1200,2000]
-      },
-      SERV: { // diárias, lotes ou mês
-        "Facilitador Externo (diária)":[900,1800],
-        "Locação de Espaço (diária)":[600,1500],
-        "Coffee break por pessoa":[25,55],
-        "Consultoria Jurídica (hora)":[300,600],
-        "Contabilidade mensal":[1200,2600],
-        "Tradução/Interpretação (hora)":[140,320],
-        "Filmagem/Captação (diária)":[900,2200],
-        "Fotografia (diária)":[700,1800],
-        "Edição de Vídeo (lote)":[1500,3500],
-        "Desenvolvimento Web (hora)":[120,300],
-        "Impressão gráfica terceirizada (lote)":[800,1800],
-        "Segurança de Evento (diária)":[350,800]
-      },
-      MAT: { // compra única ou lote
-        "Materiais Pedagógicos (kit)":[600,1400],
-        "Papel A4, 10 resmas":[220,360],
-        "Cartuchos de Tinta/Toner":[350,900],
-        "EPIs diversos (lote)":[400,900],
-        "Pasta, pastas suspensas e arquivamento":[180,420],
-        "Banners e lonas (lote)":[300,900],
-        "Camisetas personalizadas, 20 un":[600,1400],
-        "Livros e manuais (lote)":[500,1500]
-      },
-      EQP: { // compra única, alguns aluguel
-        "Notebook (un)":[3000,6000],
-        "Desktop (un)":[2500,5200],
-        "Impressora (un)":[1300,2800],
-        "Scanner (un)":[700,1800],
-        "Projetor (un)":[2000,4500],
-        "Tela de Projeção (un)":[350,900],
-        "Câmera DSLR (un)":[2800,6500],
-        "Microfone Lapela (un)":[250,800],
-        "Caixa de Som Ativa (un)":[900,2400],
-        "Roteador Wi-Fi Pro (un)":[350,900],
-        "Switch 24 portas (un)":[900,2400],
-        "Nobreak 1500VA (un)":[900,2100],
-        "Drone básico (un)":[3200,6500],
-        "Kit Arduino, 5 un":[500,1200],
-        "Aluguel de Equipamentos (mês)":[700,1400]
-      },
-      OUT: { // recorrentes e eventos
-        "Passagem aérea nacional (trecho)":[600,1500],
-        "Diárias de hospedagem (un)":[180,380],
-        "Transporte local aplicativo (viagem)":[25,80],
-        "Combustível (mês)":[900,2200],
-        "Pedágios e estacionamentos (mês)":[120,400],
-        "Correios e fretes (mês)":[120,350],
-        "Internet e telefonia (mês)":[120,280],
-        "Seguro equipamentos (mês)":[80,250],
-        "Taxas bancárias e tarifas (mês)":[50,180]
-      }
+      RH: { "Coordenador Geral":[9000,14000],"Gerente de Projetos":[7500,12000],"Gerente de Contratos":[7000,10000],
+            "Analista Financeiro":[5000,8000],"Analista de Monitoramento":[5000,8000],"Assistente Administrativo":[2800,4500],
+            "Técnico de Campo":[4000,5500],"Pedagogo":[4800,7200],"Comunicador Social":[4200,6000],
+            "Designer":[3800,5500],"Motorista":[2500,3800],"Auxiliar de Logística":[2300,3500],"Estagiário":[1200,2000] },
+      SERV: { "Facilitador Externo (diária)":[900,1800],"Locação de Espaço (diária)":[600,1500],"Coffee break por pessoa":[25,55],
+              "Consultoria Jurídica (hora)":[300,600],"Contabilidade mensal":[1200,2600],"Tradução/Interpretação (hora)":[140,320],
+              "Filmagem/Captação (diária)":[900,2200],"Fotografia (diária)":[700,1800],"Edição de Vídeo (lote)":[1500,3500],
+              "Desenvolvimento Web (hora)":[120,300],"Impressão gráfica terceirizada (lote)":[800,1800],"Segurança de Evento (diária)":[350,800] },
+      MAT: { "Materiais Pedagógicos (kit)":[600,1400],"Papel A4, 10 resmas":[220,360],"Cartuchos de Tinta/Toner":[350,900],
+             "EPIs diversos (lote)":[400,900],"Pasta, pastas suspensas e arquivamento":[180,420],
+             "Banners e lonas (lote)":[300,900],"Camisetas personalizadas, 20 un":[600,1400],"Livros e manuais (lote)":[500,1500] },
+      EQP: { "Notebook (un)":[3000,6000],"Desktop (un)":[2500,5200],"Impressora (un)":[1300,2800],"Scanner (un)":[700,1800],
+             "Projetor (un)":[2000,4500],"Tela de Projeção (un)":[350,900],"Câmera DSLR (un)":[2800,6500],
+             "Microfone Lapela (un)":[250,800],"Caixa de Som Ativa (un)":[900,2400],"Roteador Wi-Fi Pro (un)":[350,900],
+             "Switch 24 portas (un)":[900,2400],"Nobreak 1500VA (un)":[900,2100],"Drone básico (un)":[3200,6500],
+             "Kit Arduino, 5 un":[500,1200],"Aluguel de Equipamentos (mês)":[700,1400] },
+      OUT: { "Passagem aérea nacional (trecho)":[600,1500],"Diárias de hospedagem (un)":[180,380],
+             "Transporte local aplicativo (viagem)":[25,80],"Combustível (mês)":[900,2200],"Pedágios e estacionamentos (mês)":[120,400],
+             "Correios e fretes (mês)":[120,350],"Internet e telefonia (mês)":[120,280],"Seguro equipamentos (mês)":[80,250],
+             "Taxas bancárias e tarifas (mês)":[50,180] }
     };
-
-    const MIN_ITEMS = {
-      "Recursos Humanos":8,
-      "Prestação de Serviços":8,
-      "Materiais e Insumos":8,
-      "Equipamentos":10,
-      "Outros":8
+    const MIN_ITEMS = {"Recursos Humanos":8,"Prestação de Serviços":8,"Materiais e Insumos":8,"Equipamentos":10,"Outros":8};
+    const mid = ([a,b]) => Math.round((a+b)/2);
+    const price = (cat,item) => {
+      const m = cat==="Recursos Humanos"?PRICE.RH:cat==="Prestação de Serviços"?PRICE.SERV:cat==="Materiais e Insumos"?PRICE.MAT:cat==="Equipamentos"?PRICE.EQP:PRICE.OUT;
+      return mid(m[item] || [900,1200]);
     };
-
-    function mid([a,b]){ return Math.round((a+b)/2); }
-    function price(cat,item){
-      const map =
-        cat==="Recursos Humanos" ? PRICE.RH :
-        cat==="Prestação de Serviços" ? PRICE.SERV :
-        cat==="Materiais e Insumos" ? PRICE.MAT :
-        cat==="Equipamentos" ? PRICE.EQP : PRICE.OUT;
-      return mid(map[item] || [900,1200]);
-    }
 
     function parseMarcoLogicoWB(wb){
       const sheetName = wb.SheetNames.find(n=>/marco/i.test(n)) || wb.SheetNames[0];
@@ -208,7 +138,6 @@
       }
       return items;
     }
-
     function spanMeses(prazo,total){
       const p=String(prazo||"").toLowerCase();
       let ini=1, fim=total;
@@ -220,12 +149,9 @@
       return {ini,fim};
     }
 
-    // Seleção de muitos itens por atividade com base em palavras-chave
+    // Proposição (igual à versão anterior, omitido por brevidade)
     function itensPorAtividade(titulo){
-      const t=titulo.toLowerCase();
-      const out=[];
-
-      // RH
+      const t=titulo.toLowerCase(); const out=[];
       if(/planej|gest|coord|admin|monitor|avalia|finance/.test(t)){
         out.push(["Recursos Humanos","Coordenador Geral","mês",1,"servico"]);
         out.push(["Recursos Humanos","Analista Financeiro","mês",1,"servico"]);
@@ -244,30 +170,20 @@
       if(/educ|form|capacit|trein/.test(t)){
         out.push(["Recursos Humanos","Pedagogo","mês",1,"servico"]);
       }
-
-      // Serviços
       if(/capacit|trein|oficina|workshop/.test(t)){
         out.push(["Prestação de Serviços","Facilitador Externo (diária)","diária",2,"servico"]);
         out.push(["Prestação de Serviços","Locação de Espaço (diária)","diária",2,"servico"]);
         out.push(["Prestação de Serviços","Coffee break por pessoa","un",40,"servico"]);
       }
-      if(/juríd|contrato/.test(t)){
-        out.push(["Prestação de Serviços","Consultoria Jurídica (hora)","hora",6,"servico"]);
-      }
-      if(/site|sistema|plataforma|web/.test(t)){
-        out.push(["Prestação de Serviços","Desenvolvimento Web (hora)","hora",20,"servico"]);
-      }
+      if(/juríd|contrato/.test(t)){ out.push(["Prestação de Serviços","Consultoria Jurídica (hora)","hora",6,"servico"]); }
+      if(/site|sistema|plataforma|web/.test(t)){ out.push(["Prestação de Serviços","Desenvolvimento Web (hora)","hora",20,"servico"]); }
       if(/comunic|vídeo|foto|registro/.test(t)){
         out.push(["Prestação de Serviços","Filmagem/Captação (diária)","diária",1,"servico"]);
         out.push(["Prestação de Serviços","Fotografia (diária)","diária",1,"servico"]);
         out.push(["Prestação de Serviços","Edição de Vídeo (lote)","lote",1,"servico"]);
         out.push(["Prestação de Serviços","Impressão gráfica terceirizada (lote)","lote",1,"servico"]);
       }
-      if(/contáb|finance/.test(t)){
-        out.push(["Prestação de Serviços","Contabilidade mensal","mês",1,"servico"]);
-      }
-
-      // Materiais
+      if(/contáb|finance/.test(t)){ out.push(["Prestação de Serviços","Contabilidade mensal","mês",1,"servico"]); }
       if(/oficina|aula|material|didát|impress/.test(t)){
         out.push(["Materiais e Insumos","Materiais Pedagógicos (kit)","kit",2,"compra"]);
         out.push(["Materiais e Insumos","Papel A4, 10 resmas","lote",1,"compra"]);
@@ -275,14 +191,8 @@
         out.push(["Materiais e Insumos","EPIs diversos (lote)","lote",1,"compra"]);
         out.push(["Materiais e Insumos","Banners e lonas (lote)","lote",1,"compra"]);
       }
-      if(/camisa|uniform/.test(t)){
-        out.push(["Materiais e Insumos","Camisetas personalizadas, 20 un","lote",1,"compra"]);
-      }
-      if(/bibli|conteúdo|manual|guia/.test(t)){
-        out.push(["Materiais e Insumos","Livros e manuais (lote)","lote",1,"compra"]);
-      }
-
-      // Equipamentos
+      if(/camisa|uniform/.test(t)){ out.push(["Materiais e Insumos","Camisetas personalizadas, 20 un","lote",1,"compra"]); }
+      if(/bibli|conteúdo|manual|guia/.test(t)){ out.push(["Materiais e Insumos","Livros e manuais (lote)","lote",1,"compra"]); }
       if(/escrit|admin|gest|oficina|capacit|comput|ti|dados/.test(t)){
         out.push(["Equipamentos","Notebook (un)","un",2,"compra"]);
         out.push(["Equipamentos","Impressora (un)","un",1,"compra"]);
@@ -298,14 +208,8 @@
         out.push(["Equipamentos","Microfone Lapela (un)","un",2,"compra"]);
         out.push(["Equipamentos","Caixa de Som Ativa (un)","un",2,"compra"]);
       }
-      if(/laborat|robót|arduino|maker/.test(t)){
-        out.push(["Equipamentos","Kit Arduino, 5 un","lote",1,"compra"]);
-      }
-      if(/alug|loca/.test(t)){
-        out.push(["Equipamentos","Aluguel de Equipamentos (mês)","mês",1,"servico"]);
-      }
-
-      // Outros
+      if(/laborat|robót|arduino|maker/.test(t)){ out.push(["Equipamentos","Kit Arduino, 5 un","lote",1,"compra"]); }
+      if(/alug|loca/.test(t)){ out.push(["Equipamentos","Aluguel de Equipamentos (mês)","mês",1,"servico"]); }
       if(/viagem|campo|desloc|interior|visita/.test(t)){
         out.push(["Outros","Passagem aérea nacional (trecho)","un",2,"servico"]);
         out.push(["Outros","Diárias de hospedagem (un)","un",4,"servico"]);
@@ -319,59 +223,59 @@
         out.push(["Outros","Seguro equipamentos (mês)","mês",1,"servico"]);
         out.push(["Outros","Taxas bancárias e tarifas (mês)","mês",1,"servico"]);
       }
-
       return out;
     }
 
-    // Distribuição mensal
-    function distribuir(item, ini, fim, meses){
+    // NOVO: distribuição corrige compras não recorrentes
+    function distribuir(item, ini, fim, meses, obs){
       const arr = Array(meses).fill(0);
       const qtd = item.qtd;
       const vu  = price(item.cat, item.name);
       const tipo = item.tipo;
       const un = item.un;
 
-      const isMensal = /m[eê]s/i.test(un);
-      const isEvento = /(diária|hora|lote|un|viagem|pessoa|trecho)/i.test(un);
+      const isMensal = /m[eê]s/i.test(un) || /mensal/i.test(item.name) || /Aluguel/i.test(item.name);
+      const isEventoServico = /(diária|hora|viagem|pessoa|trecho)/i.test(un) && tipo==="servico";
+      const pedirParcelar = /parcelad|parcelamento|fasead|entrega(s)? escalonada(s)?/i.test(obs);
 
-      if(tipo==="servico" && isMensal){
-        for(let m=ini-1;m<fim;m++) arr[m] += vu * qtd;
+      if (tipo === "servico" && isMensal) {
+        for (let m = ini - 1; m < fim; m++) arr[m] += vu * qtd;
         return arr;
       }
-      if(isEvento){
+      if (tipo === "servico" && isEventoServico) {
         const span = Math.max(1, fim - ini + 1);
         const porMes = Math.ceil(qtd / span);
-        for(let m=ini-1;m<fim;m++) arr[m] += porMes * vu;
+        for (let m = ini - 1; m < fim; m++) arr[m] += porMes * vu;
         return arr;
       }
-      // compra única
-      arr[ini-1] += vu * qtd;
+      // COMPRA: não recorrente por padrão
+      if (tipo === "compra") {
+        if (pedirParcelar && fim > ini) {
+          const span = Math.max(1, fim - ini + 1);
+          const parcela = (qtd * vu) / span;
+          for (let m = ini - 1; m < fim; m++) arr[m] += Math.round(parcela);
+        } else {
+          arr[ini - 1] += qtd * vu;
+        }
+        return arr;
+      }
+      // fallback
+      arr[ini - 1] += qtd * vu;
       return arr;
     }
 
-    // Montagem de linhas, deduplicação e variedade mínima
-    function orcar(ativs, meses){
+    function orcar(ativs, meses, obs){
       const linhas = [];
-
       for(const at of ativs){
         const {ini,fim} = spanMeses(at.prazo, meses);
         const packs = itensPorAtividade(at.titulo);
         for(const [cat,name,un,qtd,tipo] of packs){
-          const mesesVals = distribuir({cat,name,un,qtd,tipo}, ini, fim, meses).map(Math.round);
+          const mesesVals = distribuir({cat,name,un,qtd,tipo}, ini, fim, meses, obs).map(Math.round);
           const total = mesesVals.reduce((a,v)=>a+v,0);
-          linhas.push({
-            categoria: cat,
-            item: name,
-            unidade: un,
-            quantidade: qtd,
-            valor_unitario: price(cat,name),
-            meses: mesesVals,
-            total
-          });
+          linhas.push({categoria:cat,item:name,unidade:un,quantidade:qtd,valor_unitario:price(cat,name),meses:mesesVals,total});
         }
       }
-
-      // deduplicar por categoria, item, unidade, valor_unitario
+      // deduplicação
       const key = l => [l.categoria,l.item,l.unidade,l.valor_unitario].join("::");
       const map = new Map();
       for(const l of linhas){
@@ -379,84 +283,56 @@
         if(!map.has(k)) map.set(k, JSON.parse(JSON.stringify(l)));
         else{
           const acc = map.get(k);
-          acc.quantidade += l.quantidade; // para referência
+          acc.quantidade += l.quantidade;
           acc.meses = acc.meses.map((v,i)=>v + l.meses[i]);
           acc.total += l.total;
         }
       }
-
-      // garantir variedade mínima por categoria
       const byCat = new Map(ORDEM.map(c=>[c,[]]));
       for(const v of map.values()) byCat.get(v.categoria).push(v);
+
+      // variedade mínima mantendo catálogo
+      const catalog = {
+        "Recursos Humanos": Object.keys(PRICE.RH).map(n=>[n,"mês",1,"servico"]),
+        "Prestação de Serviços":[
+          ["Facilitador Externo (diária)","diária",2,"servico"],["Locação de Espaço (diária)","diária",2,"servico"],
+          ["Coffee break por pessoa","un",40,"servico"],["Consultoria Jurídica (hora)","hora",4,"servico"],
+          ["Contabilidade mensal","mês",1,"servico"],["Tradução/Interpretação (hora)","hora",6,"servico"],
+          ["Filmagem/Captação (diária)","diária",1,"servico"],["Fotografia (diária)","diária",1,"servico"],
+          ["Edição de Vídeo (lote)","lote",1,"servico"],["Impressão gráfica terceirizada (lote)","lote",1,"servico"],
+          ["Desenvolvimento Web (hora)","hora",20,"servico"],["Segurança de Evento (diária)","diária",1,"servico"]
+        ],
+        "Materiais e Insumos":[
+          ["Materiais Pedagógicos (kit)","kit",2,"compra"],["Papel A4, 10 resmas","lote",1,"compra"],
+          ["Cartuchos de Tinta/Toner","lote",1,"compra"],["EPIs diversos (lote)","lote",1,"compra"],
+          ["Pasta, pastas suspensas e arquivamento","lote",1,"compra"],["Banners e lonas (lote)","lote",1,"compra"],
+          ["Camisetas personalizadas, 20 un","lote",1,"compra"],["Livros e manuais (lote)","lote",1,"compra"]
+        ],
+        "Equipamentos":[
+          ["Notebook (un)","un",2,"compra"],["Desktop (un)","un",1,"compra"],["Impressora (un)","un",1,"compra"],
+          ["Scanner (un)","un",1,"compra"],["Projetor (un)","un",1,"compra"],["Tela de Projeção (un)","un",1,"compra"],
+          ["Câmera DSLR (un)","un",1,"compra"],["Microfone Lapela (un)","un",2,"compra"],
+          ["Caixa de Som Ativa (un)","un",2,"compra"],["Roteador Wi-Fi Pro (un)","un",1,"compra"],
+          ["Switch 24 portas (un)","un",1,"compra"],["Nobreak 1500VA (un)","un",1,"compra"],
+          ["Drone básico (un)","un",1,"compra"],["Kit Arduino, 5 un","lote",1,"compra"],
+          ["Aluguel de Equipamentos (mês)","mês",1,"servico"]
+        ],
+        "Outros":[
+          ["Passagem aérea nacional (trecho)","un",2,"servico"],["Diárias de hospedagem (un)","un",4,"servico"],
+          ["Transporte local aplicativo (viagem)","viagem",8,"servico"],["Combustível (mês)","mês",1,"servico"],
+          ["Pedágios e estacionamentos (mês)","mês",1,"servico"],["Correios e fretes (mês)","mês",1,"servico"],
+          ["Internet e telefonia (mês)","mês",1,"servico"],["Seguro equipamentos (mês)","mês",1,"servico"],
+          ["Taxas bancárias e tarifas (mês)","mês",1,"servico"]
+        ]
+      };
 
       function addIfMissing(cat, name, un, qtd, tipo){
         const exists = byCat.get(cat).some(r=>r.item===name && r.unidade===un);
         if(exists) return;
-        const {ini,fim} = {ini:1, fim:meses};
-        const mesesVals = distribuir({cat,name,un,qtd,tipo}, ini, fim, meses).map(Math.round);
+        const mesesVals = distribuir({cat,name,un,qtd,tipo}, 1, meses, meses, obs).map(Math.round);
         const total = mesesVals.reduce((a,v)=>a+v,0);
-        const row = {
-          categoria: cat, item: name, unidade: un, quantidade: qtd,
-          valor_unitario: price(cat,name), meses: mesesVals, total
-        };
-        byCat.get(cat).push(row);
+        byCat.get(cat).push({categoria:cat,item:name,unidade:un,quantidade:qtd,valor_unitario:price(cat,name),meses:mesesVals,total});
       }
-
-      const catalog = {
-        "Recursos Humanos": Object.keys(PRICE.RH).map(n=>[n,"mês",1,"servico"]),
-        "Prestação de Serviços":[
-          ["Facilitador Externo (diária)","diária",2,"servico"],
-          ["Locação de Espaço (diária)","diária",2,"servico"],
-          ["Coffee break por pessoa","un",40,"servico"],
-          ["Consultoria Jurídica (hora)","hora",4,"servico"],
-          ["Contabilidade mensal","mês",1,"servico"],
-          ["Tradução/Interpretação (hora)","hora",6,"servico"],
-          ["Filmagem/Captação (diária)","diária",1,"servico"],
-          ["Fotografia (diária)","diária",1,"servico"],
-          ["Edição de Vídeo (lote)","lote",1,"servico"],
-          ["Impressão gráfica terceirizada (lote)","lote",1,"servico"],
-          ["Desenvolvimento Web (hora)","hora",20,"servico"],
-          ["Segurança de Evento (diária)","diária",1,"servico"]
-        ],
-        "Materiais e Insumos":[
-          ["Materiais Pedagógicos (kit)","kit",2,"compra"],
-          ["Papel A4, 10 resmas","lote",1,"compra"],
-          ["Cartuchos de Tinta/Toner","lote",1,"compra"],
-          ["EPIs diversos (lote)","lote",1,"compra"],
-          ["Pasta, pastas suspensas e arquivamento","lote",1,"compra"],
-          ["Banners e lonas (lote)","lote",1,"compra"],
-          ["Camisetas personalizadas, 20 un","lote",1,"compra"],
-          ["Livros e manuais (lote)","lote",1,"compra"]
-        ],
-        "Equipamentos":[
-          ["Notebook (un)","un",2,"compra"],
-          ["Desktop (un)","un",1,"compra"],
-          ["Impressora (un)","un",1,"compra"],
-          ["Scanner (un)","un",1,"compra"],
-          ["Projetor (un)","un",1,"compra"],
-          ["Tela de Projeção (un)","un",1,"compra"],
-          ["Câmera DSLR (un)","un",1,"compra"],
-          ["Microfone Lapela (un)","un",2,"compra"],
-          ["Caixa de Som Ativa (un)","un",2,"compra"],
-          ["Roteador Wi-Fi Pro (un)","un",1,"compra"],
-          ["Switch 24 portas (un)","un",1,"compra"],
-          ["Nobreak 1500VA (un)","un",1,"compra"],
-          ["Drone básico (un)","un",1,"compra"],
-          ["Kit Arduino, 5 un","lote",1,"compra"],
-          ["Aluguel de Equipamentos (mês)","mês",1,"servico"]
-        ],
-        "Outros":[
-          ["Passagem aérea nacional (trecho)","un",2,"servico"],
-          ["Diárias de hospedagem (un)","un",4,"servico"],
-          ["Transporte local aplicativo (viagem)","viagem",8,"servico"],
-          ["Combustível (mês)","mês",1,"servico"],
-          ["Pedágios e estacionamentos (mês)","mês",1,"servico"],
-          ["Correios e fretes (mês)","mês",1,"servico"],
-          ["Internet e telefonia (mês)","mês",1,"servico"],
-          ["Seguro equipamentos (mês)","mês",1,"servico"],
-          ["Taxas bancárias e tarifas (mês)","mês",1,"servico"]
-        ]
-      };
 
       for(const cat of ORDEM){
         const need = MIN_ITEMS[cat];
@@ -469,26 +345,19 @@
         }
       }
 
-      // compactar
       const finalLinhas = [];
       for(const cat of ORDEM){
         const arr = byCat.get(cat);
         if(!arr || arr.length===0) continue;
         arr.sort((a,b)=>a.item.localeCompare(b.item));
         for(const l of arr) finalLinhas.push(l);
-
-        // subtotal
         const sub = {categoria:cat,item:"Subtotal",unidade:"",quantidade:"",valor_unitario:"",
           meses:Array(meses).fill(0), total:0, _sub:true};
         for(const l of arr){ l.meses.forEach((v,i)=>sub.meses[i]+=v); sub.total += l.total; }
         finalLinhas.push(sub);
       }
-
-      // totais
-      const somaMes = Array(meses).fill(0);
-      let somaTotal = 0;
+      const somaMes = Array(meses).fill(0); let somaTotal = 0;
       for(const l of finalLinhas){ if(l._sub) continue; l.meses.forEach((v,i)=>somaMes[i]+=v); somaTotal += l.total; }
-
       return {linhas:finalLinhas, somaMes, somaTotal};
     }
 
@@ -496,14 +365,10 @@
       const thead=document.querySelector("#tbl thead");
       const tbody=document.querySelector("#tbl tbody");
       thead.innerHTML=""; tbody.innerHTML="";
-
       const trh=document.createElement("tr");
-      trh.innerHTML =
-        `<th>Categoria</th><th>Item</th><th>Unid.</th><th>Qtd.</th><th>Vlr unit.</th>` +
-        Array.from({length:meses},(_,i)=>`<th>M${i+1}</th>`).join("") +
-        `<th>Total</th>`;
+      trh.innerHTML = `<th>Categoria</th><th>Item</th><th>Unid.</th><th>Qtd.</th><th>Vlr unit.</th>` +
+        Array.from({length:meses},(_,i)=>`<th>M${i+1}</th>`).join("") + `<th>Total</th>`;
       thead.appendChild(trh);
-
       for(const l of orc.linhas){
         const tr=document.createElement("tr");
         if(l._sub) tr.classList.add("sub");
@@ -514,7 +379,6 @@
           `<td><b>${moeda(l.total)}</b></td>`;
         tbody.appendChild(tr);
       }
-
       const trT=document.createElement("tr");
       trT.classList.add("sub");
       trT.innerHTML =
@@ -522,35 +386,25 @@
         orc.somaMes.map(v=>`<td><b>${moeda(v)}</b></td>`).join("") +
         `<td><b>${moeda(orc.somaTotal)}</b></td>`;
       tbody.appendChild(trT);
-
       document.getElementById("previewBox").style.display="block";
     }
 
     function baixarXLSX(orc, nome, meses){
-      const aoa=[];
-      aoa.push(["Orçamento por Categoria — Itens realistas"]);
-      aoa.push([]);
-      aoa.push(["Categoria","Item","Unidade","Quantidade","Valor unitário"]
-        .concat(Array.from({length:meses},(_,i)=>`M${i+1}`)).concat(["Total"]));
-      for(const l of orc.linhas){
-        aoa.push([l.categoria,l.item,l.unidade,l.quantidade,l.valor_unitario].concat(l.meses).concat([l.total]));
-      }
+      const aoa=[]; aoa.push(["Orçamento por Categoria — Itens realistas"]); aoa.push([]);
+      aoa.push(["Categoria","Item","Unidade","Quantidade","Valor unitário"].concat(Array.from({length:meses},(_,i)=>`M${i+1}`)).concat(["Total"]));
+      for(const l of orc.linhas){ aoa.push([l.categoria,l.item,l.unidade,l.quantidade,l.valor_unitario].concat(l.meses).concat([l.total])); }
       aoa.push(["TOTAL","","","",""].concat(orc.somaMes).concat([orc.somaTotal]));
-      const wb=XLSX.utils.book_new();
-      const ws=XLSX.utils.aoa_to_sheet(aoa);
-      ws['!cols']=[{wch:24},{wch:36},{wch:8},{wch:8},{wch:12}]
-        .concat(Array.from({length:meses},()=>({wch:12}))).concat([{wch:14}]);
+      const wb=XLSX.utils.book_new(); const ws=XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols']=[{wch:24},{wch:36},{wch:8},{wch:8},{wch:12}].concat(Array.from({length:meses},()=>({wch:12}))).concat([{wch:14}]);
       XLSX.utils.book_append_sheet(wb, ws, "Orcamento");
       const safe=(nome||'Projeto').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30);
       XLSX.writeFile(wb, `Orcamento_${safe}_${Date.now()}.xlsx`);
     }
     function baixarCSV(orc, nome, meses){
-      const cols=["Categoria","Item","Unidade","Quantidade","Valor_unitario"]
-        .concat(Array.from({length:meses},(_,i)=>`M${i+1}`)).concat(["Total"]);
+      const cols=["Categoria","Item","Unidade","Quantidade","Valor_unitario"].concat(Array.from({length:meses},(_,i)=>`M${i+1}`)).concat(["Total"]);
       const rows=orc.linhas.map(l=>[l.categoria,l.item,l.unidade,l.quantidade,l.valor_unitario].concat(l.meses).concat([l.total]));
       const total=["TOTAL","","","",""].concat(orc.somaMes).concat([orc.somaTotal]);
-      const csv=[cols].concat(rows).concat([total])
-        .map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(',')).join('\n');
+      const csv=[cols].concat(rows).concat([total]).map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(',')).join('\n');
       const a=document.createElement('a');
       a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
       a.download=`Orcamento_${(nome||'Projeto').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)}_${Date.now()}.csv`;
@@ -569,11 +423,10 @@
       e.preventDefault();
       const statusEl=document.querySelector(".status");
       try{
-        statusEl.textContent="Processando";
-        statusEl.classList.remove("error","success");
-
+        statusEl.textContent="Processando"; statusEl.classList.remove("error","success");
         const nomeProjeto=norm(document.getElementById("nomeProjeto").value);
         const meses=parseInt(document.getElementById("dur").value||"12",10); mesesSel=meses;
+        const obs=norm(document.getElementById("obs").value);
         const f=document.getElementById("mlfile").files?.[0];
         if(!nomeProjeto||!f||!meses) throw new Error("Preencha nome, duração e anexe o XLSX do Marco Lógico.");
 
@@ -581,20 +434,16 @@
         const wb=XLSX.read(buf,{type:"array"});
         const ativs=parseMarcoLogicoWB(wb);
 
-        // opcional: enviar para serviço que retorna preços atualizados
         try{
           await fetch(WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({nomeProjeto, meses, ml_xlsx_b64: btoa(String.fromCharCode(...new Uint8Array(buf)))})});
+            body: JSON.stringify({nomeProjeto, meses, observacoes: obs, ml_xlsx_b64: btoa(String.fromCharCode(...new Uint8Array(buf)))})});
         }catch(_){}
 
-        const orc=orcar(ativs, meses);
-        ultimo=orc;
-        renderTabela(orc, meses);
-        statusEl.textContent="✓ OK";
-        statusEl.classList.add("success");
+        const orc=orcar(ativs, meses, obs);
+        ultimo=orc; renderTabela(orc, meses);
+        statusEl.textContent="✓ OK"; statusEl.classList.add("success");
       }catch(err){
-        statusEl.textContent="Erro: "+err.message;
-        statusEl.classList.add("error");
+        statusEl.textContent="Erro: "+err.message; statusEl.classList.add("error");
       }
     });
   </script>
