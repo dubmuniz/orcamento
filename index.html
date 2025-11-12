@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
-  <title>Orçamento por Categoria — deduplicação e compras não recorrentes</title>
+  <title>Orçamento por Categoria — Itens realistas e deduplicados</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -31,13 +31,12 @@
     td { white-space:pre-wrap }
     .right { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap }
     .sub { background:#fbfbfb; font-weight:600 }
-    .small { font-size:12px; color:var(--muted) }
   </style>
 </head>
 <body>
   <header class="wrap">
     <h1>Orçamento por Categoria</h1>
-    <p class="lead">Itens variados e realistas por categoria, deduplicação automática, compras concentradas no(s) mês(es) de aquisição.</p>
+    <p class="lead">Itens variados e realistas por categoria, deduplicação automática, compras não recorrentes.</p>
   </header>
 
   <main class="wrap">
@@ -74,11 +73,6 @@
       <label>Observações</label>
       <textarea id="obs" placeholder="Ex.: compras parceladas, faseamento de aquisições, regras de alocação."></textarea>
 
-      <div class="small">
-        <p><b>Integração Make (opcional):</b> informe o URL do seu Webhook, se desejar logar execuções.</p>
-        <input id="webhook" placeholder="https://hook.us2.make.com/uy3iducn5a5e819ux7cmoh9jjh82h33x" />
-      </div>
-
       <div class="right" style="margin-top:12px">
         <button id="btn">Gerar Orçamento</button>
       </div>
@@ -96,49 +90,84 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
-    // ------------------------------
-    // Configurações e utilitários
-    // ------------------------------
+    // Seu Webhook do Make (deve RESPONDER com CSV ou JSON {catalog_csv:"..."})
+    const WEBHOOK_URL = "https://hook.us2.make.com/uy3iducn5a5e819ux7cmoh9jjh82h33x";
+
     const ORDEM = ["Recursos Humanos","Prestação de Serviços","Materiais e Insumos","Equipamentos","Outros"];
     const norm  = s => String(s || "").replace(/\s+/g, " ").trim();
-    const moedaFmt = (ccy) => Intl.NumberFormat(ccy==="USD"?"en-US":"pt-BR", { style: "currency", currency: ccy });
-    const BRL = v => moedaFmt("BRL").format(v);
+    const moeda = v => Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
-    // Catálogo de preços (faixas realistas). Ajuste localmente conforme necessário.
-    const PRICE = {
-      RH: { "Coordenador Geral":[9000,14000],"Gerente de Projetos":[7500,12000],"Gerente de Contratos":[7000,10000],
-            "Analista Financeiro":[5000,8000],"Analista de Monitoramento":[5000,8000],"Assistente Administrativo":[2800,4500],
-            "Técnico de Campo":[4000,5500],"Pedagogo":[4800,7200],"Comunicador Social":[4200,6000],
-            "Designer":[3800,5500],"Motorista":[2500,3800],"Auxiliar de Logística":[2300,3500],"Estagiário":[1200,2000] },
-      SERV: { "Facilitador Externo (diária)":[900,1800],"Locação de Espaço (diária)":[600,1500],"Coffee break por pessoa":[25,55],
-              "Consultoria Jurídica (hora)":[300,600],"Contabilidade mensal":[1200,2600],"Tradução/Interpretação (hora)":[140,320],
-              "Filmagem/Captação (diária)":[900,2200],"Fotografia (diária)":[700,1800],"Edição de Vídeo (lote)":[1500,3500],
-              "Desenvolvimento Web (hora)":[120,300],"Impressão gráfica terceirizada (lote)":[800,1800],"Segurança de Evento (diária)":[350,800] },
-      MAT: { "Materiais Pedagógicos (kit)":[600,1400],"Papel A4, 10 resmas":[220,360],"Cartuchos de Tinta/Toner":[350,900],
-             "EPIs diversos (lote)":[400,900],"Pasta, pastas suspensas e arquivamento":[180,420],
-             "Banners e lonas (lote)":[300,900],"Camisetas personalizadas, 20 un":[600,1400],"Livros e manuais (lote)":[500,1500] },
-      EQP: { "Notebook (un)":[3000,6000],"Desktop (un)":[2500,5200],"Impressora (un)":[1300,2800],"Scanner (un)":[700,1800],
-             "Projetor (un)":[2000,4500],"Tela de Projeção (un)":[350,900],"Câmera DSLR (un)":[2800,6500],
-             "Microfone Lapela (un)":[250,800],"Caixa de Som Ativa (un)":[900,2400],"Roteador Wi-Fi Pro (un)":[350,900],
-             "Switch 24 portas (un)":[900,2400],"Nobreak 1500VA (un)":[900,2100],"Drone básico (un)":[3200,6500],
-             "Kit Arduino, 5 un":[500,1200],"Aluguel de Equipamentos (mês)":[700,1400] },
-      OUT: { "Passagem aérea nacional (trecho)":[600,1500],"Diárias de hospedagem (un)":[180,380],
-             "Transporte local aplicativo (viagem)":[25,80],"Combustível (mês)":[900,2200],"Pedágios e estacionamentos (mês)":[120,400],
-             "Correios e fretes (mês)":[120,350],"Internet e telefonia (mês)":[120,280],"Seguro equipamentos (mês)":[80,250],
-             "Taxas bancárias e tarifas (mês)":[50,180] }
-    };
-    const MIN_ITEMS = {"Recursos Humanos":8,"Prestação de Serviços":8,"Materiais e Insumos":8,"Equipamentos":10,"Outros":8};
-    const mid = ([a,b]) => Math.round((a+b)/2);
-    const price = (cat,item) => {
-      const m = cat==="Recursos Humanos"?PRICE.RH:cat==="Prestação de Serviços"?PRICE.SERV:cat==="Materiais e Insumos"?PRICE.MAT:cat==="Equipamentos"?PRICE.EQP:PRICE.OUT;
-      return mid(m[item] || [900,1200]);
-    };
+    // ====== Catálogo vindo do Make ======
+    // Estrutura: categoria,item,unidade,valor_unitario,tipo,modo,moeda,alias
+    let CATALOG_ROWS = [];
+    const CATALOG_BY_CAT = new Map();     // cat -> [rows]
+    const PRICE_BY_KEY  = new Map();      // "cat::item" e "cat::alias" -> row
 
-    // ------------------------------
-    // Leitura do Marco Lógico (XLSX)
-    // ------------------------------
+    function loadCatalogCSV(csv){
+      CATALOG_ROWS = [];
+      CATALOG_BY_CAT.clear();
+      PRICE_BY_KEY.clear();
+
+      const lines = csv.split(/\r?\n/).filter(l=>l.trim().length>0);
+      if(lines.length===0) return;
+      const headers = lines[0].split(",").map(h=>h.trim().toLowerCase());
+      const idx = n => headers.indexOf(n);
+
+      for(let i=1;i<lines.length;i++){
+        const cols = splitCSVLine(lines[i]);
+        if(cols.length < headers.length) continue;
+        const row = {
+          categoria: cols[idx("categoria")]?.trim() || "",
+          item:      cols[idx("item")]?.trim() || "",
+          unidade:   cols[idx("unidade")]?.trim() || "",
+          valor:     Number(cols[idx("valor_unitario")]?.replace(/\./g,'').replace(',','.')) || Number(cols[idx("valor_unitario")]) || 0,
+          tipo:      cols[idx("tipo")]?.trim() || "",
+          modo:      cols[idx("modo")]?.trim() || "",
+          moeda:     cols[idx("moeda")]?.trim() || "BRL",
+          alias:     cols[idx("alias")]?.trim() || ""
+        };
+        if(!row.categoria || !row.item) continue;
+        CATALOG_ROWS.push(row);
+        if(!CATALOG_BY_CAT.has(row.categoria)) CATALOG_BY_CAT.set(row.categoria, []);
+        CATALOG_BY_CAT.get(row.categoria).push(row);
+        PRICE_BY_KEY.set(key(row.categoria,row.item), row);
+        if(row.alias) PRICE_BY_KEY.set(key(row.categoria,row.alias), row);
+      }
+    }
+
+    function splitCSVLine(line){
+      // CSV simples com aspas. Não cobre 100% do RFC, suficiente para nosso catálogo.
+      const out=[]; let cur=""; let inQ=false;
+      for(let i=0;i<line.length;i++){
+        const ch=line[i];
+        if(ch==='"' ){
+          if(inQ && line[i+1]==='"'){ cur+='"'; i++; }
+          else inQ=!inQ;
+        }else if(ch===',' && !inQ){
+          out.push(cur); cur="";
+        }else cur+=ch;
+      }
+      out.push(cur);
+      return out.map(s=>s.trim());
+    }
+
+    const key = (cat,it)=>`${cat}::${it}`.toLowerCase();
+    function getRow(cat,item){
+      return PRICE_BY_KEY.get(key(cat,item)) || null;
+    }
+    function getPrice(cat,item){
+      const r = getRow(cat,item);
+      return r ? r.valor : 0;
+    }
+    function overrideFromCatalog(cat,name,un,tipo){
+      const r = getRow(cat,name);
+      if(!r) return {un,tipo};
+      return {un: r.unidade || un, tipo: r.tipo || tipo};
+    }
+
+    // ====== Leitura do Marco Lógico (igual) ======
     function parseMarcoLogicoWB(wb){
-      const sheetName = wb.SheetNames.find(n=>/marco|logico|l[óo]gic/i.test(n)) || wb.SheetNames[0];
+      const sheetName = wb.SheetNames.find(n=>/marco/i.test(n)) || wb.SheetNames[0];
       const ws = wb.Sheets[sheetName];
       const aoa = XLSX.utils.sheet_to_json(ws,{header:1,raw:false});
       const items=[];
@@ -149,8 +178,6 @@
       }
       return items;
     }
-
-    // Meses a partir do campo de prazo
     function spanMeses(prazo,total){
       const p=String(prazo||"").toLowerCase();
       let ini=1, fim=total;
@@ -162,88 +189,90 @@
       return {ini,fim};
     }
 
-    // Proposição de itens por atividade (contextual)
+    // ====== Proposição de itens (mantida) + ajuste de un/tipo via catálogo ======
     function itensPorAtividade(titulo){
       const t=titulo.toLowerCase(); const out=[];
+      const pushH = (cat,name,un,qtd,tipo)=>{ const o=overrideFromCatalog(cat,name,un,tipo); out.push([cat,name,o.un,qtd,o.tipo]); };
+
       if(/planej|gest|coord|admin|monitor|avalia|finance/.test(t)){
-        out.push(["Recursos Humanos","Coordenador Geral","mês",1,"servico"]);
-        out.push(["Recursos Humanos","Analista Financeiro","mês",1,"servico"]);
-        out.push(["Recursos Humanos","Analista de Monitoramento","mês",1,"servico"]);
-        out.push(["Recursos Humanos","Assistente Administrativo","mês",1,"servico"]);
+        pushH("Recursos Humanos","Coordenador Geral","mês",1,"servico");
+        pushH("Recursos Humanos","Analista Financeiro","mês",1,"servico");
+        pushH("Recursos Humanos","Analista de Monitoramento","mês",1,"servico");
+        pushH("Recursos Humanos","Assistente Administrativo","mês",1,"servico");
       }
       if(/campo|implan|execu|piloto|oficina/.test(t)){
-        out.push(["Recursos Humanos","Técnico de Campo","mês",1,"servico"]);
-        out.push(["Recursos Humanos","Motorista","mês",1,"servico"]);
-        out.push(["Recursos Humanos","Auxiliar de Logística","mês",1,"servico"]);
+        pushH("Recursos Humanos","Técnico de Campo","mês",1,"servico");
+        pushH("Recursos Humanos","Motorista","mês",1,"servico");
+        pushH("Recursos Humanos","Auxiliar de Logística","mês",1,"servico");
       }
       if(/comunic|divulga|evento|design|mídia|foto|vídeo/.test(t)){
-        out.push(["Recursos Humanos","Comunicador Social","mês",1,"servico"]);
-        out.push(["Recursos Humanos","Designer","mês",1,"servico"]);
+        pushH("Recursos Humanos","Comunicador Social","mês",1,"servico");
+        pushH("Recursos Humanos","Designer","mês",1,"servico");
       }
       if(/educ|form|capacit|trein/.test(t)){
-        out.push(["Recursos Humanos","Pedagogo","mês",1,"servico"]);
+        pushH("Recursos Humanos","Pedagogo","mês",1,"servico");
       }
       if(/capacit|trein|oficina|workshop/.test(t)){
-        out.push(["Prestação de Serviços","Facilitador Externo (diária)","diária",2,"servico"]);
-        out.push(["Prestação de Serviços","Locação de Espaço (diária)","diária",2,"servico"]);
-        out.push(["Prestação de Serviços","Coffee break por pessoa","un",40,"servico"]);
+        pushH("Prestação de Serviços","Facilitador Externo (diária)","diária",2,"servico");
+        pushH("Prestação de Serviços","Locação de Espaço (diária)","diária",2,"servico");
+        pushH("Prestação de Serviços","Coffee break por pessoa","un",40,"servico");
       }
-      if(/juríd|contrato/.test(t)){ out.push(["Prestação de Serviços","Consultoria Jurídica (hora)","hora",6,"servico"]); }
-      if(/site|sistema|plataforma|web/.test(t)){ out.push(["Prestação de Serviços","Desenvolvimento Web (hora)","hora",20,"servico"]); }
+      if(/juríd|contrato/.test(t)){ pushH("Prestação de Serviços","Consultoria Jurídica (hora)","hora",6,"servico"); }
+      if(/site|sistema|plataforma|web/.test(t)){ pushH("Prestação de Serviços","Desenvolvimento Web (hora)","hora",20,"servico"); }
       if(/comunic|vídeo|foto|registro/.test(t)){
-        out.push(["Prestação de Serviços","Filmagem/Captação (diária)","diária",1,"servico"]);
-        out.push(["Prestação de Serviços","Fotografia (diária)","diária",1,"servico"]);
-        out.push(["Prestação de Serviços","Edição de Vídeo (lote)","lote",1,"servico"]);
-        out.push(["Prestação de Serviços","Impressão gráfica terceirizada (lote)","lote",1,"servico"]);
+        pushH("Prestação de Serviços","Filmagem/Captação (diária)","diária",1,"servico");
+        pushH("Prestação de Serviços","Fotografia (diária)","diária",1,"servico");
+        pushH("Prestação de Serviços","Edição de Vídeo (lote)","lote",1,"servico");
+        pushH("Prestação de Serviços","Impressão gráfica terceirizada (lote)","lote",1,"servico");
       }
-      if(/contáb|finance/.test(t)){ out.push(["Prestação de Serviços","Contabilidade mensal","mês",1,"servico"]); }
+      if(/contáb|finance/.test(t)){ pushH("Prestação de Serviços","Contabilidade mensal","mês",1,"servico"); }
       if(/oficina|aula|material|didát|impress/.test(t)){
-        out.push(["Materiais e Insumos","Materiais Pedagógicos (kit)","kit",2,"compra"]);
-        out.push(["Materiais e Insumos","Papel A4, 10 resmas","lote",1,"compra"]);
-        out.push(["Materiais e Insumos","Cartuchos de Tinta/Toner","lote",1,"compra"]);
-        out.push(["Materiais e Insumos","EPIs diversos (lote)","lote",1,"compra"]);
-        out.push(["Materiais e Insumos","Banners e lonas (lote)","lote",1,"compra"]);
+        pushH("Materiais e Insumos","Materiais Pedagógicos (kit)","kit",2,"compra");
+        pushH("Materiais e Insumos","Papel A4, 10 resmas","lote",1,"compra");
+        pushH("Materiais e Insumos","Cartuchos de Tinta/Toner","lote",1,"compra");
+        pushH("Materiais e Insumos","EPIs diversos (lote)","lote",1,"compra");
+        pushH("Materiais e Insumos","Banners e lonas (lote)","lote",1,"compra");
       }
-      if(/camisa|uniform/.test(t)){ out.push(["Materiais e Insumos","Camisetas personalizadas, 20 un","lote",1,"compra"]); }
-      if(/bibli|conteúdo|manual|guia/.test(t)){ out.push(["Materiais e Insumos","Livros e manuais (lote)","lote",1,"compra"]); }
+      if(/camisa|uniform/.test(t)){ pushH("Materiais e Insumos","Camisetas personalizadas, 20 un","lote",1,"compra"); }
+      if(/bibli|conteúdo|manual|guia/.test(t)){ pushH("Materiais e Insumos","Livros e manuais (lote)","lote",1,"compra"); }
       if(/escrit|admin|gest|oficina|capacit|comput|ti|dados/.test(t)){
-        out.push(["Equipamentos","Notebook (un)","un",2,"compra"]);
-        out.push(["Equipamentos","Impressora (un)","un",1,"compra"]);
-        out.push(["Equipamentos","Roteador Wi-Fi Pro (un)","un",1,"compra"]);
-        out.push(["Equipamentos","Nobreak 1500VA (un)","un",1,"compra"]);
+        pushH("Equipamentos","Notebook (un)","un",2,"compra");
+        pushH("Equipamentos","Impressora (un)","un",1,"compra");
+        pushH("Equipamentos","Roteador Wi-Fi Pro (un)","un",1,"compra");
+        pushH("Equipamentos","Nobreak 1500VA (un)","un",1,"compra");
       }
       if(/apresent|audit|palestra/.test(t)){
-        out.push(["Equipamentos","Projetor (un)","un",1,"compra"]);
-        out.push(["Equipamentos","Tela de Projeção (un)","un",1,"compra"]);
+        pushH("Equipamentos","Projetor (un)","un",1,"compra");
+        pushH("Equipamentos","Tela de Projeção (un)","un",1,"compra");
       }
       if(/mídia|comunic|registro|foto|vídeo/.test(t)){
-        out.push(["Equipamentos","Câmera DSLR (un)","un",1,"compra"]);
-        out.push(["Equipamentos","Microfone Lapela (un)","un",2,"compra"]);
-        out.push(["Equipamentos","Caixa de Som Ativa (un)","un",2,"compra"]);
+        pushH("Equipamentos","Câmera DSLR (un)","un",1,"compra");
+        pushH("Equipamentos","Microfone Lapela (un)","un",2,"compra");
+        pushH("Equipamentos","Caixa de Som Ativa (un)","un",2,"compra");
       }
-      if(/laborat|robót|arduino|maker/.test(t)){ out.push(["Equipamentos","Kit Arduino, 5 un","lote",1,"compra"]); }
-      if(/alug|loca/.test(t)){ out.push(["Equipamentos","Aluguel de Equipamentos (mês)","mês",1,"servico"]); }
+      if(/laborat|robót|arduino|maker/.test(t)){ pushH("Equipamentos","Kit Arduino, 5 un","lote",1,"compra"); }
+      if(/alug|loca/.test(t)){ pushH("Equipamentos","Aluguel de Equipamentos (mês)","mês",1,"servico"); }
       if(/viagem|campo|desloc|interior|visita/.test(t)){
-        out.push(["Outros","Passagem aérea nacional (trecho)","un",2,"servico"]);
-        out.push(["Outros","Diárias de hospedagem (un)","un",4,"servico"]);
-        out.push(["Outros","Transporte local aplicativo (viagem)","viagem",8,"servico"]);
+        pushH("Outros","Passagem aérea nacional (trecho)","un",2,"servico");
+        pushH("Outros","Diárias de hospedagem (un)","un",4,"servico");
+        pushH("Outros","Transporte local aplicativo (viagem)","viagem",8,"servico");
       }
       if(/admin|escrit|gest|monitor|rotina/.test(t)){
-        out.push(["Outros","Combustível (mês)","mês",1,"servico"]);
-        out.push(["Outros","Pedágios e estacionamentos (mês)","mês",1,"servico"]);
-        out.push(["Outros","Internet e telefonia (mês)","mês",1,"servico"]);
-        out.push(["Outros","Correios e fretes (mês)","mês",1,"servico"]);
-        out.push(["Outros","Seguro equipamentos (mês)","mês",1,"servico"]);
-        out.push(["Outros","Taxas bancárias e tarifas (mês)","mês",1,"servico"]);
+        pushH("Outros","Combustível (mês)","mês",1,"servico");
+        pushH("Outros","Pedágios e estacionamentos (mês)","mês",1,"servico");
+        pushH("Outros","Internet e telefonia (mês)","mês",1,"servico");
+        pushH("Outros","Correios e fretes (mês)","mês",1,"servico");
+        pushH("Outros","Seguro equipamentos (mês)","mês",1,"servico");
+        pushH("Outros","Taxas bancárias e tarifas (mês)","mês",1,"servico");
       }
       return out;
     }
 
-    // Distribuição mensal: serviço mensal = recorrente; eventos/hora/diária = distribuído; compra = concentrada (ou parcelada por obs)
+    // ====== Distribuição / orçamento (mantidos; apenas troca price()) ======
     function distribuir(item, ini, fim, meses, obs){
       const arr = Array(meses).fill(0);
       const qtd = item.qtd;
-      const vu  = price(item.cat, item.name);
+      const vu  = getPrice(item.cat, item.name);
       const tipo = item.tipo;
       const un = item.un;
 
@@ -275,7 +304,6 @@
       return arr;
     }
 
-    // Motor principal de orçamento
     function orcar(ativs, meses, obs){
       const linhas = [];
       for(const at of ativs){
@@ -284,17 +312,19 @@
         for(const [cat,name,un,qtd,tipo] of packs){
           const mesesVals = distribuir({cat,name,un,qtd,tipo}, ini, fim, meses, obs).map(Math.round);
           const total = mesesVals.reduce((a,v)=>a+v,0);
-          linhas.push({categoria:cat,item:name,unidade:un,quantidade:qtd,valor_unitario:price(cat,name),meses:mesesVals,total});
+          const vu = getPrice(cat,name);
+          linhas.push({categoria:cat,item:name,unidade:un,quantidade:qtd,valor_unitario:vu,meses:mesesVals,total});
         }
       }
+
       // deduplicação
-      const key = l => [l.categoria,l.item,l.unidade,l.valor_unitario].join("::");
+      const k = l => [l.categoria,l.item,l.unidade,l.valor_unitario].join("::");
       const map = new Map();
       for(const l of linhas){
-        const k = key(l);
-        if(!map.has(k)) map.set(k, JSON.parse(JSON.stringify(l)));
+        const kk = k(l);
+        if(!map.has(kk)) map.set(kk, JSON.parse(JSON.stringify(l)));
         else{
-          const acc = map.get(k);
+          const acc = map.get(kk);
           acc.quantidade += l.quantidade;
           acc.meses = acc.meses.map((v,i)=>v + l.meses[i]);
           acc.total += l.total;
@@ -303,55 +333,22 @@
       const byCat = new Map(ORDEM.map(c=>[c,[]]));
       for(const v of map.values()) byCat.get(v.categoria).push(v);
 
-      // garantir variedade mínima
-      const catalog = {
-        "Recursos Humanos": Object.keys(PRICE.RH).map(n=>[n,"mês",1,"servico"]),
-        "Prestação de Serviços":[
-          ["Facilitador Externo (diária)","diária",2,"servico"],["Locação de Espaço (diária)","diária",2,"servico"],
-          ["Coffee break por pessoa","un",40,"servico"],["Consultoria Jurídica (hora)","hora",4,"servico"],
-          ["Contabilidade mensal","mês",1,"servico"],["Tradução/Interpretação (hora)","hora",6,"servico"],
-          ["Filmagem/Captação (diária)","diária",1,"servico"],["Fotografia (diária)","diária",1,"servico"],
-          ["Edição de Vídeo (lote)","lote",1,"servico"],["Impressão gráfica terceirizada (lote)","lote",1,"servico"],
-          ["Desenvolvimento Web (hora)","hora",20,"servico"],["Segurança de Evento (diária)","diária",1,"servico"]
-        ],
-        "Materiais e Insumos":[
-          ["Materiais Pedagógicos (kit)","kit",2,"compra"],["Papel A4, 10 resmas","lote",1,"compra"],
-          ["Cartuchos de Tinta/Toner","lote",1,"compra"],["EPIs diversos (lote)","lote",1,"compra"],
-          ["Pasta, pastas suspensas e arquivamento","lote",1,"compra"],["Banners e lonas (lote)","lote",1,"compra"],
-          ["Camisetas personalizadas, 20 un","lote",1,"compra"],["Livros e manuais (lote)","lote",1,"compra"]
-        ],
-        "Equipamentos":[
-          ["Notebook (un)","un",2,"compra"],["Desktop (un)","un",1,"compra"],["Impressora (un)","un",1,"compra"],
-          ["Scanner (un)","un",1,"compra"],["Projetor (un)","un",1,"compra"],["Tela de Projeção (un)","un",1,"compra"],
-          ["Câmera DSLR (un)","un",1,"compra"],["Microfone Lapela (un)","un",2,"compra"],
-          ["Caixa de Som Ativa (un)","un",2,"compra"],["Roteador Wi-Fi Pro (un)","un",1,"compra"],
-          ["Switch 24 portas (un)","un",1,"compra"],["Nobreak 1500VA (un)","un",1,"compra"],
-          ["Drone básico (un)","un",1,"compra"],["Kit Arduino, 5 un","lote",1,"compra"],
-          ["Aluguel de Equipamentos (mês)","mês",1,"servico"]
-        ],
-        "Outros":[
-          ["Passagem aérea nacional (trecho)","un",2,"servico"],["Diárias de hospedagem (un)","un",4,"servico"],
-          ["Transporte local aplicativo (viagem)","viagem",8,"servico"],["Combustível (mês)","mês",1,"servico"],
-          ["Pedágios e estacionamentos (mês)","mês",1,"servico"],["Correios e fretes (mês)","mês",1,"servico"],
-          ["Internet e telefonia (mês)","mês",1,"servico"],["Seguro equipamentos (mês)","mês",1,"servico"],
-          ["Taxas bancárias e tarifas (mês)","mês",1,"servico"]
-        ]
-      };
-
-      function addIfMissing(cat, name, un, qtd, tipo){
-        const exists = byCat.get(cat).some(r=>r.item===name && r.unidade===un);
+      // variedade mínima agora baseada no catálogo recebido
+      function addIfMissing(cat, row){
+        const exists = byCat.get(cat).some(r=>r.item===row.item && r.unidade===row.unidade);
         if(exists) return;
-        const mesesVals = distribuir({cat,name,un,qtd,tipo}, 1, meses, meses, obs).map(Math.round);
+        const mesesVals = distribuir({cat,name:row.item,un:row.unidade,qtd:1,tipo:row.tipo||"compra"}, 1, meses, meses, "").map(Math.round);
         const total = mesesVals.reduce((a,v)=>a+v,0);
-        byCat.get(cat).push({categoria:cat,item:name,unidade:un,quantidade:qtd,valor_unitario:price(cat,name),meses:mesesVals,total});
+        byCat.get(cat).push({categoria:cat,item:row.item,unidade:row.unidade,quantidade:1,valor_unitario:row.valor,meses:mesesVals,total});
       }
 
       for(const cat of ORDEM){
-        const need = MIN_ITEMS[cat];
+        const need =  (cat==="Equipamentos")?10:8;
         const have = byCat.get(cat).length;
         if(have < need){
-          for(const def of catalog[cat]){
-            addIfMissing(cat, def[0], def[1], def[2], def[3]);
+          const pool = (CATALOG_BY_CAT.get(cat)||[]).slice(0,need*2);
+          for(const row of pool){
+            addIfMissing(cat,row);
             if(byCat.get(cat).length >= need) break;
           }
         }
@@ -373,9 +370,7 @@
       return {linhas:finalLinhas, somaMes, somaTotal};
     }
 
-    // Renderização
-    function renderTabela(orc, meses, ccy="BRL"){
-      const f = (v)=> moedaFmt(ccy).format(v);
+    function renderTabela(orc, meses){
       const thead=document.querySelector("#tbl thead");
       const tbody=document.querySelector("#tbl tbody");
       thead.innerHTML=""; tbody.innerHTML="";
@@ -388,22 +383,21 @@
         if(l._sub) tr.classList.add("sub");
         tr.innerHTML =
           `<td>${l.categoria}</td><td>${l.item}</td><td>${l.unidade}</td><td>${l.quantidade}</td>` +
-          `<td>${l.valor_unitario?f(l.valor_unitario):""}</td>` +
-          l.meses.map(v=>`<td>${f(v)}</td>`).join("") +
-          `<td><b>${f(l.total)}</b></td>`;
+          `<td>${l.valor_unitario?moeda(l.valor_unitario):""}</td>` +
+          l.meses.map(v=>`<td>${moeda(v)}</td>`).join("") +
+          `<td><b>${moeda(l.total)}</b></td>`;
         tbody.appendChild(tr);
       }
       const trT=document.createElement("tr");
       trT.classList.add("sub");
       trT.innerHTML =
         `<td colspan="5"><b>TOTAL</b></td>` +
-        orc.somaMes.map(v=>`<td><b>${f(v)}</b></td>`).join("") +
-        `<td><b>${f(orc.somaTotal)}</b></td>`;
+        orc.somaMes.map(v=>`<td><b>${moeda(v)}</b></td>`).join("") +
+        `<td><b>${moeda(orc.somaTotal)}</b></td>`;
       tbody.appendChild(trT);
       document.getElementById("previewBox").style.display="block";
     }
 
-    // Exportações
     function baixarXLSX(orc, nome, meses){
       const aoa=[]; aoa.push(["Orçamento por Categoria — Itens realistas"]); aoa.push([]);
       aoa.push(["Categoria","Item","Unidade","Quantidade","Valor unitário"].concat(Array.from({length:meses},(_,i)=>`M${i+1}`)).concat(["Total"]));
@@ -426,11 +420,10 @@
       document.body.appendChild(a); a.click(); a.remove();
     }
 
-    // UI
     const frm=document.getElementById("frm");
     const dlX=document.getElementById("dlXlsx");
     const dlC=document.getElementById("dlCsv");
-    let ultimo=null, mesesSel=12, moedaSel="BRL";
+    let ultimo=null, mesesSel=12;
 
     dlX.addEventListener("click",()=>{ if(ultimo) baixarXLSX(ultimo, document.getElementById("nomeProjeto").value, mesesSel); });
     dlC.addEventListener("click",()=>{ if(ultimo) baixarCSV(ultimo, document.getElementById("nomeProjeto").value, mesesSel); });
@@ -440,12 +433,9 @@
       const statusEl=document.querySelector(".status");
       try{
         statusEl.textContent="Processando"; statusEl.classList.remove("error","success");
-
         const nomeProjeto=norm(document.getElementById("nomeProjeto").value);
         const meses=parseInt(document.getElementById("dur").value||"12",10); mesesSel=meses;
         const obs=norm(document.getElementById("obs").value);
-        const lang=document.getElementById("lang").value;
-        moedaSel = (lang==="pt") ? "BRL" : "USD";
         const f=document.getElementById("mlfile").files?.[0];
         if(!nomeProjeto||!f||!meses) throw new Error("Preencha nome, duração e anexe o XLSX do Marco Lógico.");
 
@@ -453,24 +443,35 @@
         const wb=XLSX.read(buf,{type:"array"});
         const ativs=parseMarcoLogicoWB(wb);
 
-        // webhook Make (opcional) — alinhado ao seu cenário atual
-        const hook = norm(document.getElementById("webhook").value);
-        if (hook.startsWith("http")) {
-          try {
-            await fetch(hook,{method:"POST",headers:{"Content-Type":"application/json"},
-              body: JSON.stringify({
-                type:"marco_logico_orcamento",
-                nomeProjeto, meses, lang, observacoes: obs,
-                ml_xlsx_b64: btoa(String.fromCharCode(...new Uint8Array(buf)))
-              })
-            });
-          } catch(_) { /* silencioso */ }
-        }
+        // Chama o Make e carrega o catálogo a partir da RESPOSTA do webhook
+        let catalogCSV = "";
+        try{
+          const resp = await fetch(WEBHOOK_URL,{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({
+              nomeProjeto, meses, observacoes: obs,
+              ml_xlsx_b64: btoa(String.fromCharCode(...new Uint8Array(buf)))
+            })
+          });
+          const ct = resp.headers.get("content-type")||"";
+          if(ct.includes("application/json")){
+            const j = await resp.json();
+            catalogCSV = j.catalog_csv || j.text || "";
+          }else{
+            catalogCSV = await resp.text();
+          }
+        }catch(_){ /* se não vier, segue vazio */ }
+
+        if(!catalogCSV) throw new Error("Catálogo não recebido do Make. Verifique o módulo Webhooks » Custom webhook response.");
+        loadCatalogCSV(catalogCSV);
 
         const orc=orcar(ativs, meses, obs);
-        ultimo=orc; renderTabela(orc, meses, moedaSel);
+        ultimo=orc; renderTabela(orc, meses);
         statusEl.textContent="✓ OK"; statusEl.classList.add("success");
       }catch(err){
+        console.error(err);
+        document.getElementById("previewBox").style.display="none";
         statusEl.textContent="Erro: "+err.message; statusEl.classList.add("error");
       }
     });
