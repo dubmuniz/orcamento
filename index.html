@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
-  <title>Orçamento por Categoria — Itens realistas e deduplicados</title>
+  <title>Orçamento por Categoria — deduplicação e compras não recorrentes</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -31,12 +31,13 @@
     td { white-space:pre-wrap }
     .right { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap }
     .sub { background:#fbfbfb; font-weight:600 }
+    .small { font-size:12px; color:var(--muted) }
   </style>
 </head>
 <body>
   <header class="wrap">
     <h1>Orçamento por Categoria</h1>
-    <p class="lead">Itens variados e realistas por categoria, deduplicação automática, compras não recorrentes.</p>
+    <p class="lead">Itens variados e realistas por categoria, deduplicação automática, compras concentradas no(s) mês(es) de aquisição.</p>
   </header>
 
   <main class="wrap">
@@ -73,6 +74,11 @@
       <label>Observações</label>
       <textarea id="obs" placeholder="Ex.: compras parceladas, faseamento de aquisições, regras de alocação."></textarea>
 
+      <div class="small">
+        <p><b>Integração Make (opcional):</b> informe o URL do seu Webhook, se desejar logar execuções.</p>
+        <input id="webhook" placeholder="https://hook.us2.make.com/SEU_WEBHOOK_AQUI" />
+      </div>
+
       <div class="right" style="margin-top:12px">
         <button id="btn">Gerar Orçamento</button>
       </div>
@@ -90,13 +96,15 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
-    const WEBHOOK_URL = "https://hook.us2.make.com/SEU_WEBHOOK_AQUI"; // opcional
-
+    // ------------------------------
+    // Configurações e utilitários
+    // ------------------------------
     const ORDEM = ["Recursos Humanos","Prestação de Serviços","Materiais e Insumos","Equipamentos","Outros"];
     const norm  = s => String(s || "").replace(/\s+/g, " ").trim();
-    const moeda = v => Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+    const moedaFmt = (ccy) => Intl.NumberFormat(ccy==="USD"?"en-US":"pt-BR", { style: "currency", currency: ccy });
+    const BRL = v => moedaFmt("BRL").format(v);
 
-    // Catálogo resumido mantendo os valores realistas
+    // Catálogo de preços (faixas realistas). Ajuste localmente conforme necessário.
     const PRICE = {
       RH: { "Coordenador Geral":[9000,14000],"Gerente de Projetos":[7500,12000],"Gerente de Contratos":[7000,10000],
             "Analista Financeiro":[5000,8000],"Analista de Monitoramento":[5000,8000],"Assistente Administrativo":[2800,4500],
@@ -126,8 +134,11 @@
       return mid(m[item] || [900,1200]);
     };
 
+    // ------------------------------
+    // Leitura do Marco Lógico (XLSX)
+    // ------------------------------
     function parseMarcoLogicoWB(wb){
-      const sheetName = wb.SheetNames.find(n=>/marco/i.test(n)) || wb.SheetNames[0];
+      const sheetName = wb.SheetNames.find(n=>/marco|logico|l[óo]gic/i.test(n)) || wb.SheetNames[0];
       const ws = wb.Sheets[sheetName];
       const aoa = XLSX.utils.sheet_to_json(ws,{header:1,raw:false});
       const items=[];
@@ -138,6 +149,8 @@
       }
       return items;
     }
+
+    // Meses a partir do campo de prazo
     function spanMeses(prazo,total){
       const p=String(prazo||"").toLowerCase();
       let ini=1, fim=total;
@@ -149,7 +162,7 @@
       return {ini,fim};
     }
 
-    // Proposição (igual à versão anterior, omitido por brevidade)
+    // Proposição de itens por atividade (contextual)
     function itensPorAtividade(titulo){
       const t=titulo.toLowerCase(); const out=[];
       if(/planej|gest|coord|admin|monitor|avalia|finance/.test(t)){
@@ -226,7 +239,7 @@
       return out;
     }
 
-    // NOVO: distribuição corrige compras não recorrentes
+    // Distribuição mensal: serviço mensal = recorrente; eventos/hora/diária = distribuído; compra = concentrada (ou parcelada por obs)
     function distribuir(item, ini, fim, meses, obs){
       const arr = Array(meses).fill(0);
       const qtd = item.qtd;
@@ -248,7 +261,6 @@
         for (let m = ini - 1; m < fim; m++) arr[m] += porMes * vu;
         return arr;
       }
-      // COMPRA: não recorrente por padrão
       if (tipo === "compra") {
         if (pedirParcelar && fim > ini) {
           const span = Math.max(1, fim - ini + 1);
@@ -259,11 +271,11 @@
         }
         return arr;
       }
-      // fallback
       arr[ini - 1] += qtd * vu;
       return arr;
     }
 
+    // Motor principal de orçamento
     function orcar(ativs, meses, obs){
       const linhas = [];
       for(const at of ativs){
@@ -291,7 +303,7 @@
       const byCat = new Map(ORDEM.map(c=>[c,[]]));
       for(const v of map.values()) byCat.get(v.categoria).push(v);
 
-      // variedade mínima mantendo catálogo
+      // garantir variedade mínima
       const catalog = {
         "Recursos Humanos": Object.keys(PRICE.RH).map(n=>[n,"mês",1,"servico"]),
         "Prestação de Serviços":[
@@ -361,7 +373,9 @@
       return {linhas:finalLinhas, somaMes, somaTotal};
     }
 
-    function renderTabela(orc, meses){
+    // Renderização
+    function renderTabela(orc, meses, ccy="BRL"){
+      const f = (v)=> moedaFmt(ccy).format(v);
       const thead=document.querySelector("#tbl thead");
       const tbody=document.querySelector("#tbl tbody");
       thead.innerHTML=""; tbody.innerHTML="";
@@ -374,21 +388,22 @@
         if(l._sub) tr.classList.add("sub");
         tr.innerHTML =
           `<td>${l.categoria}</td><td>${l.item}</td><td>${l.unidade}</td><td>${l.quantidade}</td>` +
-          `<td>${l.valor_unitario?moeda(l.valor_unitario):""}</td>` +
-          l.meses.map(v=>`<td>${moeda(v)}</td>`).join("") +
-          `<td><b>${moeda(l.total)}</b></td>`;
+          `<td>${l.valor_unitario?f(l.valor_unitario):""}</td>` +
+          l.meses.map(v=>`<td>${f(v)}</td>`).join("") +
+          `<td><b>${f(l.total)}</b></td>`;
         tbody.appendChild(tr);
       }
       const trT=document.createElement("tr");
       trT.classList.add("sub");
       trT.innerHTML =
         `<td colspan="5"><b>TOTAL</b></td>` +
-        orc.somaMes.map(v=>`<td><b>${moeda(v)}</b></td>`).join("") +
-        `<td><b>${moeda(orc.somaTotal)}</b></td>`;
+        orc.somaMes.map(v=>`<td><b>${f(v)}</b></td>`).join("") +
+        `<td><b>${f(orc.somaTotal)}</b></td>`;
       tbody.appendChild(trT);
       document.getElementById("previewBox").style.display="block";
     }
 
+    // Exportações
     function baixarXLSX(orc, nome, meses){
       const aoa=[]; aoa.push(["Orçamento por Categoria — Itens realistas"]); aoa.push([]);
       aoa.push(["Categoria","Item","Unidade","Quantidade","Valor unitário"].concat(Array.from({length:meses},(_,i)=>`M${i+1}`)).concat(["Total"]));
@@ -411,10 +426,11 @@
       document.body.appendChild(a); a.click(); a.remove();
     }
 
+    // UI
     const frm=document.getElementById("frm");
     const dlX=document.getElementById("dlXlsx");
     const dlC=document.getElementById("dlCsv");
-    let ultimo=null, mesesSel=12;
+    let ultimo=null, mesesSel=12, moedaSel="BRL";
 
     dlX.addEventListener("click",()=>{ if(ultimo) baixarXLSX(ultimo, document.getElementById("nomeProjeto").value, mesesSel); });
     dlC.addEventListener("click",()=>{ if(ultimo) baixarCSV(ultimo, document.getElementById("nomeProjeto").value, mesesSel); });
@@ -424,9 +440,12 @@
       const statusEl=document.querySelector(".status");
       try{
         statusEl.textContent="Processando"; statusEl.classList.remove("error","success");
+
         const nomeProjeto=norm(document.getElementById("nomeProjeto").value);
         const meses=parseInt(document.getElementById("dur").value||"12",10); mesesSel=meses;
         const obs=norm(document.getElementById("obs").value);
+        const lang=document.getElementById("lang").value;
+        moedaSel = (lang==="pt") ? "BRL" : "USD";
         const f=document.getElementById("mlfile").files?.[0];
         if(!nomeProjeto||!f||!meses) throw new Error("Preencha nome, duração e anexe o XLSX do Marco Lógico.");
 
@@ -434,13 +453,22 @@
         const wb=XLSX.read(buf,{type:"array"});
         const ativs=parseMarcoLogicoWB(wb);
 
-        try{
-          await fetch(WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({nomeProjeto, meses, observacoes: obs, ml_xlsx_b64: btoa(String.fromCharCode(...new Uint8Array(buf)))})});
-        }catch(_){}
+        // webhook Make (opcional) — alinhado ao seu cenário atual
+        const hook = norm(document.getElementById("webhook").value);
+        if (hook.startsWith("http")) {
+          try {
+            await fetch(hook,{method:"POST",headers:{"Content-Type":"application/json"},
+              body: JSON.stringify({
+                type:"marco_logico_orcamento",
+                nomeProjeto, meses, lang, observacoes: obs,
+                ml_xlsx_b64: btoa(String.fromCharCode(...new Uint8Array(buf)))
+              })
+            });
+          } catch(_) { /* silencioso */ }
+        }
 
         const orc=orcar(ativs, meses, obs);
-        ultimo=orc; renderTabela(orc, meses);
+        ultimo=orc; renderTabela(orc, meses, moedaSel);
         statusEl.textContent="✓ OK"; statusEl.classList.add("success");
       }catch(err){
         statusEl.textContent="Erro: "+err.message; statusEl.classList.add("error");
