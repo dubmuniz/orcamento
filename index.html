@@ -70,12 +70,6 @@
       <label>Marco Lógico em XLSX *</label>
       <input type="file" id="mlfile" accept=".xlsx,.xls" required />
 
-      <label>Descrição da Proposta (opcional, texto livre que a IA usa)</label>
-      <textarea id="descricaoProposta" placeholder="Resumo da proposta..."></textarea>
-
-      <label>Objetivos Específicos (opcional, separe por ||)</label>
-      <textarea id="objetivosEspecificosTexto" placeholder="Obj. 1 || Obj. 2 || Obj. 3"></textarea>
-
       <label>Observações</label>
       <textarea id="obs" placeholder="Ex.: compras parceladas, faseamento de aquisições, regras de alocação."></textarea>
 
@@ -96,13 +90,12 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
-    const WEBHOOK_URL = "https://hook.us2.make.com/uy3iducn5a5e819ux7cmoh9jjh82h33x";
+    const WEBHOOK_URL = "https://hook.us2.make.com/SEU_WEBHOOK_AQUI";
 
     const ORDEM = ["Recursos Humanos","Prestação de Serviços","Materiais e Insumos","Equipamentos","Outros"];
     const norm  = s => String(s || "").replace(/\s+/g, " ").trim();
     const moeda = v => Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
-    // === Catálogo (mantido) ===
     const PRICE = {
       RH: { "Coordenador Geral":[9000,14000],"Gerente de Projetos":[7500,12000],"Gerente de Contratos":[7000,10000],
             "Analista Financeiro":[5000,8000],"Analista de Monitoramento":[5000,8000],"Assistente Administrativo":[2800,4500],
@@ -292,6 +285,59 @@
       const byCat = new Map(ORDEM.map(c=>[c,[]]));
       for(const v of map.values()) byCat.get(v.categoria).push(v);
 
+      function addIfMissing(cat, name, un, qtd, tipo){
+        const exists = byCat.get(cat).some(r=>r.item===name && r.unidade===un);
+        if(exists) return;
+        const mesesVals = distribuir({cat,name,un,qtd,tipo}, 1, meses, meses, obs).map(Math.round);
+        const total = mesesVals.reduce((a,v)=>a+v,0);
+        byCat.get(cat).push({categoria:cat,item:name,unidade:un,quantidade:qtd,valor_unitario:price(cat,name),meses:mesesVals,total});
+      }
+
+      const catalog = {
+        "Recursos Humanos": Object.keys(PRICE.RH).map(n=>[n,"mês",1,"servico"]),
+        "Prestação de Serviços":[
+          ["Facilitador Externo (diária)","diária",2,"servico"],["Locação de Espaço (diária)","diária",2,"servico"],
+          ["Coffee break por pessoa","un",40,"servico"],["Consultoria Jurídica (hora)","hora",4,"servico"],
+          ["Contabilidade mensal","mês",1,"servico"],["Tradução/Interpretação (hora)","hora",6,"servico"],
+          ["Filmagem/Captação (diária)","diária",1,"servico"],["Fotografia (diária)","diária",1,"servico"],
+          ["Edição de Vídeo (lote)","lote",1,"servico"],["Impressão gráfica terceirizada (lote)","lote",1,"servico"],
+          ["Desenvolvimento Web (hora)","hora",20,"servico"],["Segurança de Evento (diária)","diária",1,"servico"]
+        ],
+        "Materiais e Insumos":[
+          ["Materiais Pedagógicos (kit)","kit",2,"compra"],["Papel A4, 10 resmas","lote",1,"compra"],
+          ["Cartuchos de Tinta/Toner","lote",1,"compra"],["EPIs diversos (lote)","lote",1,"compra"],
+          ["Pasta, pastas suspensas e arquivamento","lote",1,"compra"],["Banners e lonas (lote)","lote",1,"compra"],
+          ["Camisetas personalizadas, 20 un","lote",1,"compra"],["Livros e manuais (lote)","lote",1,"compra"]
+        ],
+        "Equipamentos":[
+          ["Notebook (un)","un",2,"compra"],["Desktop (un)","un",1,"compra"],["Impressora (un)","un",1,"compra"],
+          ["Scanner (un)","un",1,"compra"],["Projetor (un)","un",1,"compra"],["Tela de Projeção (un)","un",1,"compra"],
+          ["Câmera DSLR (un)","un",1,"compra"],["Microfone Lapela (un)","un",2,"compra"],
+          ["Caixa de Som Ativa (un)","un",2,"compra"],["Roteador Wi-Fi Pro (un)","un",1,"compra"],
+          ["Switch 24 portas (un)","un",1,"compra"],["Nobreak 1500VA (un)","un",1,"compra"],
+          ["Drone básico (un)","un",1,"compra"],["Kit Arduino, 5 un","lote",1,"compra"],
+          ["Aluguel de Equipamentos (mês)","mês",1,"servico"]
+        ],
+        "Outros":[
+          ["Passagem aérea nacional (trecho)","un",2,"servico"],["Diárias de hospedagem (un)","un",4,"servico"],
+          ["Transporte local aplicativo (viagem)","viagem",8,"servico"],["Combustível (mês)","mês",1,"servico"],
+          ["Pedágios e estacionamentos (mês)","mês",1,"servico"],["Correios e fretes (mês)","mês",1,"servico"],
+          ["Internet e telefonia (mês)","mês",1,"servico"],["Seguro equipamentos (mês)","mês",1,"servico"],
+          ["Taxas bancárias e tarifas (mês)","mês",1,"servico"]
+        ]
+      };
+
+      for(const cat of ORDEM){
+        const need = MIN_ITEMS[cat];
+        const have = byCat.get(cat).length;
+        if(have < need){
+          for(const def of catalog[cat]){
+            addIfMissing(cat, def[0], def[1], def[2], def[3]);
+            if(byCat.get(cat).length >= need) break;
+          }
+        }
+      }
+
       const finalLinhas = [];
       for(const cat of ORDEM){
         const arr = byCat.get(cat);
@@ -374,8 +420,6 @@
         const nomeProjeto=norm(document.getElementById("nomeProjeto").value);
         const meses=parseInt(document.getElementById("dur").value||"12",10); mesesSel=meses;
         const obs=norm(document.getElementById("obs").value);
-        const descricaoProposta=norm(document.getElementById("descricaoProposta").value);
-        const objetivosEspecificosTexto=norm(document.getElementById("objetivosEspecificosTexto").value);
         const f=document.getElementById("mlfile").files?.[0];
         if(!nomeProjeto||!f||!meses) throw new Error("Preencha nome, duração e anexe o XLSX do Marco Lógico.");
 
@@ -383,21 +427,9 @@
         const wb=XLSX.read(buf,{type:"array"});
         const ativs=parseMarcoLogicoWB(wb);
 
-        // Envio ao Make (webhook)
         try{
-          await fetch(WEBHOOK_URL,{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({
-              nomeProjeto,
-              meses,
-              observacoes: obs,
-              descricaoProposta,
-              objetivosEspecificosTexto,
-              // opcional: edital (se quiser, acrescente um campo extra no form e envie aqui)
-              ml_xlsx_b64: btoa(String.fromCharCode(...new Uint8Array(buf)))
-            })
-          });
+          await fetch(WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({nomeProjeto, meses, observacoes: obs, ml_xlsx_b64: btoa(String.fromCharCode(...new Uint8Array(buf)))})});
         }catch(_){}
 
         const orc=orcar(ativs, meses, obs);
