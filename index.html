@@ -1,196 +1,179 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <title>Orçamento por Categoria — IA</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <meta charset="utf-8"/>
+  <title>Orçamento por Categoria — IA + Tabela</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
   <style>
-    :root { --green:#1E7E34; --ink:#1b1b1b; --bg:#fafafa; --muted:#667085 }
-    * { box-sizing:border-box }
-    body { margin:0; background:var(--bg); color:var(--ink); font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif }
-    .wrap { max-width:1200px; margin:0 auto; padding:20px }
-    header { text-align:center; padding:16px 0 }
-    h1 { margin:0 0 8px; font-size:26px }
-    .lead { color:var(--muted) }
-    form { background:#fff; border:1px solid #eee; border-radius:12px; padding:18px }
-    label { display:block; margin:12px 0 6px; font-weight:600 }
-    input, textarea, select { width:100%; border:1px solid #d8dee4; border-radius:8px; padding:10px; font:inherit }
-    textarea { min-height:110px; resize:vertical }
-    .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px }
-    button { background:var(--green); color:#fff; border:0; border-radius:10px; padding:12px 18px; font-weight:600; cursor:pointer; font-size:16px }
-    .status { min-height:22px; color:var(--muted); margin:10px 0 0; font-size:14px }
-    .status.error { color:#c62828 } .status.success { color:var(--green) }
-    .table { margin-top:14px; background:#fff; border:1px solid #eee; border-radius:10px; overflow:auto }
-    table { width:100%; border-collapse:collapse; font-size:13px }
-    th, td { border-bottom:1px solid #eee; padding:8px 10px; vertical-align:top; word-break:break-word }
-    th { background:#f6fbf6; color:#0f5132; text-align:left; position:sticky; top:0 }
-    td { white-space:pre-wrap }
-    .right { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap }
-    .sub { background:#fbfbfb; font-weight:600 }
+    :root{--green:#1E7E34;--ink:#1b1b1b;--bg:#fafafa;--muted:#667085}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
+    .wrap{max-width:1200px;margin:0 auto;padding:20px}
+    header{text-align:center;padding:16px 0}.lead{color:var(--muted)}
+    form{background:#fff;border:1px solid #eee;border-radius:12px;padding:18px}
+    label{display:block;margin:12px 0 6px;font-weight:600}
+    input,textarea,select{width:100%;border:1px solid #d8dee4;border-radius:8px;padding:10px;font:inherit}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    button{background:var(--green);color:#fff;border:0;border-radius:10px;padding:12px 18px;font-weight:600;cursor:pointer;font-size:16px}
+    .status{min-height:22px;color:var(--muted);margin:10px 0 0;font-size:14px}.status.error{color:#c62828}.status.success{color:var(--green)}
+    .table{margin-top:14px;background:#fff;border:1px solid #eee;border-radius:10px;overflow:auto}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{border-bottom:1px solid #eee;padding:8px 10px;vertical-align:top;word-break:break-word}
+    th{background:#f6fbf6;color:#0f5132;text-align:left;position:sticky;top:0}
+    td{white-space:pre-wrap}.right{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}.sub{background:#fbfbfb;font-weight:600}
   </style>
 </head>
 <body>
-  <header class="wrap">
-    <h1>Orçamento por Categoria</h1>
-    <p class="lead">Tudo gerado pela IA a partir do Marco Lógico.</p>
-  </header>
+<header class="wrap">
+  <h1>Orçamento por Categoria</h1>
+  <p class="lead">A IA lê o Marco Lógico e seleciona itens exclusivamente da tabela de referência.</p>
+</header>
 
-  <main class="wrap">
-    <form id="frm" novalidate>
-      <div class="row3">
-        <div>
-          <label>Nome do Projeto *</label>
-          <input id="nomeProjeto" required placeholder="Ex.: Governança Climática nos Territórios" />
-        </div>
-        <div>
-          <label>Idioma de saída *</label>
-          <select id="lang" required>
-            <option value="pt" selected>Português</option>
-            <option value="en">English</option>
-            <option value="es">Español</option>
-          </select>
-        </div>
-        <div>
-          <label>Duração em meses *</label>
-          <select id="dur" required>
-            <option value="">Selecione</option>
-            <option>6</option><option selected>12</option><option>18</option><option>24</option><option>36</option>
-          </select>
-        </div>
+<main class="wrap">
+  <form id="frm" novalidate>
+    <div class="row3">
+      <div>
+        <label>Nome do Projeto *</label>
+        <input id="nomeProjeto" required placeholder="Ex.: Governança Climática nos Territórios"/>
       </div>
-
-      <label>Marco Lógico em XLSX *</label>
-      <input type="file" id="mlfile" accept=".xlsx,.xls" required />
-
-      <label>Observações</label>
-      <textarea id="obs" placeholder="Ex.: compras parceladas, faseamento de aquisições, regras de alocação."></textarea>
-
-      <div class="right" style="margin-top:12px">
-        <button id="btn">Gerar Orçamento</button>
+      <div>
+        <label>Duração em meses *</label>
+        <select id="dur" required>
+          <option value="">Selecione</option>
+          <option>6</option><option selected>12</option><option>18</option><option>24</option><option>36</option>
+        </select>
       </div>
-      <p class="status"></p>
-    </form>
-
-    <div id="previewBox" class="table" style="display:none">
-      <table id="tbl"><thead></thead><tbody></tbody></table>
-      <div class="right" style="padding:10px">
-        <button id="dlXlsx">Baixar XLSX</button>
-        <button id="dlCsv">Baixar CSV</button>
+      <div>
+        <label>Observações</label>
+        <input id="obs" placeholder="Ex.: compras parceladas, regras de alocação"/>
       </div>
     </div>
-  </main>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
-  <script>
-    const WEBHOOK_URL = "https://hook.us2.make.com/uy3iducn5a5e819ux7cmoh9jjh82h33x";
-    const norm  = s => String(s || "").replace(/\s+/g, " ").trim();
-    const moeda = v => Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+    <label>Marco Lógico em XLSX *</label>
+    <input type="file" id="mlfile" accept=".xlsx,.xls" required/>
 
-    function renderTabela(orc, meses){
-      const thead=document.querySelector("#tbl thead");
-      const tbody=document.querySelector("#tbl tbody");
-      thead.innerHTML=""; tbody.innerHTML="";
-      const trh=document.createElement("tr");
-      trh.innerHTML = `<th>Categoria</th><th>Item</th><th>Unid.</th><th>Qtd.</th><th>Vlr unit.</th>` +
-        Array.from({length:meses},(_,i)=>`<th>M${i+1}</th>`).join("") + `<th>Total</th>`;
-      thead.appendChild(trh);
-      for(const l of orc.linhas){
-        const tr=document.createElement("tr");
-        if(l._sub) tr.classList.add("sub");
-        tr.innerHTML =
-          `<td>${l.categoria}</td><td>${l.item}</td><td>${l.unidade}</td><td>${l.quantidade}</td>` +
-          `<td>${l.valor_unitario!==""?moeda(l.valor_unitario):""}</td>` +
-          l.meses.map(v=>`<td>${moeda(v)}</td>`).join("") +
-          `<td><b>${moeda(l.total)}</b></td>`;
-        tbody.appendChild(tr);
-      }
-      const trT=document.createElement("tr");
-      trT.classList.add("sub");
-      trT.innerHTML =
-        `<td colspan="5"><b>TOTAL</b></td>` +
-        orc.somaMes.map(v=>`<td><b>${moeda(v)}</b></td>`).join("") +
-        `<td><b>${moeda(orc.somaTotal)}</b></td>`;
-      tbody.appendChild(trT);
-      document.getElementById("previewBox").style.display="block";
+    <div class="right" style="margin-top:12px">
+      <button id="btn">Gerar Orçamento</button>
+    </div>
+    <p class="status"></p>
+  </form>
+
+  <div id="previewBox" class="table" style="display:none">
+    <table id="tbl"><thead></thead><tbody></tbody></table>
+    <div class="right" style="padding:10px">
+      <button id="dlXlsx">Baixar XLSX</button>
+      <button id="dlCsv">Baixar CSV</button>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+  const WEBHOOK_URL = "https://hook.us2.make.com/uy3iducn5a5e819ux7cmoh9jjh82h33x"; // seu webhook Make (que devolve o JSON final)
+
+  const moeda = v => Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(v);
+  const norm = s => String(s||"").replace(/\s+/g," ").trim();
+  let ultimo=null, mesesSel=12;
+
+  function renderTabela(pkg, meses){
+    const thead=document.querySelector("#tbl thead");
+    const tbody=document.querySelector("#tbl tbody");
+    thead.innerHTML=""; tbody.innerHTML="";
+    const trh=document.createElement("tr");
+    trh.innerHTML = `<th>Categoria</th><th>Item</th><th>Unid.</th><th>Qtd.</th><th>Vlr unit.</th>`
+      + Array.from({length:meses},(_,i)=>`<th>M${i+1}</th>`).join("") + `<th>Total</th>`;
+    thead.appendChild(trh);
+    for(const l of pkg.linhas){
+      const tr=document.createElement("tr");
+      tr.innerHTML =
+        `<td>${l.categoria}</td><td>${l.item}</td><td>${l.unidade}</td><td>${l.quantidade}</td>`
+        + `<td>${moeda(l.valor_unitario)}</td>`
+        + l.meses.map(v=>`<td>${moeda(v)}</td>`).join("")
+        + `<td><b>${moeda(l.total)}</b></td>`;
+      tbody.appendChild(tr);
     }
+    const trT=document.createElement("tr");
+    trT.classList.add("sub");
+    trT.innerHTML = `<td colspan="5"><b>TOTAL</b></td>`
+      + pkg.somaMes.map(v=>`<td><b>${moeda(v)}</b></td>`).join("")
+      + `<td><b>${moeda(pkg.somaTotal)}</b></td>`;
+    tbody.appendChild(trT);
+    document.getElementById("previewBox").style.display="block";
+  }
 
-    function b64ToUint8(b64){
-      const bin = atob(b64);
-      const len = bin.length;
-      const bytes = new Uint8Array(len);
-      for (let i=0;i<len;i++) bytes[i]=bin.charCodeAt(i);
-      return bytes;
-    }
-
-    async function postToMake(payload){
-      const res = await fetch(WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-      if(!res.ok) throw new Error("Webhook HTTP "+res.status);
-      return res.json(); // espera { gzip_b64: "..." }
-    }
-
-    function baixarXLSX(orc, nome, meses){
-      const aoa=[]; aoa.push(["Orçamento por Categoria — IA"]); aoa.push([]);
-      aoa.push(["Categoria","Item","Unidade","Quantidade","Valor unitário"].concat(Array.from({length:meses},(_,i)=>`M${i+1}`)).concat(["Total"]));
-      for(const l of orc.linhas){ aoa.push([l.categoria,l.item,l.unidade,l.quantidade,l.valor_unitario].concat(l.meses).concat([l.total])); }
-      aoa.push(["TOTAL","","","",""].concat(orc.somaMes).concat([orc.somaTotal]));
-      const wb=XLSX.utils.book_new(); const ws=XLSX.utils.aoa_to_sheet(aoa);
-      ws['!cols']=[{wch:24},{wch:36},{wch:8},{wch:8},{wch:12}].concat(Array.from({length:meses},()=>({wch:12}))).concat([{wch:14}]);
-      XLSX.utils.book_append_sheet(wb, ws, "Orcamento");
-      const safe=(nome||'Projeto').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30);
-      XLSX.writeFile(wb, `Orcamento_${safe}_${Date.now()}.xlsx`);
-    }
-    function baixarCSV(orc, nome, meses){
-      const cols=["Categoria","Item","Unidade","Quantidade","Valor_unitario"].concat(Array.from({length:meses},(_,i)=>`M${i+1}`)).concat(["Total"]);
-      const rows=orc.linhas.map(l=>[l.categoria,l.item,l.unidade,l.quantidade,l.valor_unitario].concat(l.meses).concat([l.total]));
-      const total=["TOTAL","","","",""].concat(orc.somaMes).concat([orc.somaTotal]);
-      const csv=[cols].concat(rows).concat([total]).map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(',')).join('\n');
-      const a=document.createElement('a');
-      a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-      a.download=`Orcamento_${(nome||'Projeto').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)}_${Date.now()}.csv`;
-      document.body.appendChild(a); a.click(); a.remove();
-    }
-
-    const frm=document.getElementById("frm");
-    const dlX=document.getElementById("dlXlsx");
-    const dlC=document.getElementById("dlCsv");
-    let ultimo=null, mesesSel=12;
-
-    dlX.addEventListener("click",()=>{ if(ultimo) baixarXLSX(ultimo, document.getElementById("nomeProjeto").value, mesesSel); });
-    dlC.addEventListener("click",()=>{ if(ultimo) baixarCSV(ultimo, document.getElementById("nomeProjeto").value, mesesSel); });
-
-    frm.addEventListener("submit", async e=>{
-      e.preventDefault();
-      const statusEl=document.querySelector(".status");
-      try{
-        statusEl.textContent="Processando"; statusEl.classList.remove("error","success");
-        const nomeProjeto=norm(document.getElementById("nomeProjeto").value);
-        const meses=parseInt(document.getElementById("dur").value||"12",10); mesesSel=meses;
-        const obs=norm(document.getElementById("obs").value);
-        const f=document.getElementById("mlfile").files?.[0];
-        if(!nomeProjeto||!f||!meses) throw new Error("Preencha nome, duração e anexe o XLSX do Marco Lógico.");
-
-        const buf=await f.arrayBuffer();
-        const gzipResp = await postToMake({
-          nomeProjeto, meses, observacoes: obs,
-          ml_xlsx_b64: btoa(String.fromCharCode(...new Uint8Array(buf)))
-        });
-
-        // Espera { gzip_b64: "<BASE64_GZIP_JSON>" }
-        const jsonBytes = pako.ungzip(b64ToUint8(gzipResp.gzip_b64));
-        const text = new TextDecoder().decode(jsonBytes);
-        const orc = JSON.parse(text);
-
-        ultimo=orc; renderTabela(orc, meses);
-        statusEl.textContent="✓ OK"; statusEl.classList.add("success");
-      }catch(err){
-        statusEl.textContent="Erro: "+err.message; statusEl.classList.add("error");
-      }
+  function baixarXLSX(pkg, nome, meses){
+    const aoa = [];
+    aoa.push(["Orçamento por Categoria — IA + Tabela"]); aoa.push([]);
+    aoa.push(["Categoria","Item","Unidade","Quantidade","Valor unitário"].concat(Array.from({length:meses},(_,i)=>`M${i+1}`)).concat(["Total"]));
+    let startRow = 4;
+    pkg.linhas.forEach((l,i)=>{
+      aoa.push([l.categoria,l.item,l.unidade,l.quantidade,l.valor_unitario].concat(l.meses).concat([l.total]));
     });
-  </script>
+    const totalRow = aoa.length+1;
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    // Fórmulas de somatório por coluna M1..Mn e Total
+    const colIdx = c => XLSX.utils.encode_col(c);
+    const lastDataRow = totalRow-1;
+    // Total por coluna M1..Mn
+    for(let m=0;m<meses;m++){
+      const col = 5+m; // 0:A,1:B,2:C,3:D,4:E(valor_unit),5:first month
+      ws[XLSX.utils.encode_cell({r:totalRow-1,c:col})] = { t:'n', f:`SUM(${colIdx(col)}${startRow}:${colIdx(col)}${lastDataRow})` };
+    }
+    // Total geral
+    const lastCol = 5+meses; // coluna do Total por linha
+    ws[XLSX.utils.encode_cell({r:totalRow-1,c:lastCol})] = { t:'n', f:`SUM(${colIdx(lastCol)}${startRow}:${colIdx(lastCol)}${lastDataRow})` };
+    ws['!cols']=[{wch:22},{wch:36},{wch:10},{wch:10},{wch:14}]
+      .concat(Array.from({length:meses},()=>({wch:14}))).concat([{wch:16}]);
+    XLSX.utils.book_append_sheet(wb, ws, "Orcamento");
+    const safe=(nome||'Projeto').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30);
+    XLSX.writeFile(wb, `Orcamento_${safe}_${Date.now()}.xlsx`);
+  }
+
+  function baixarCSV(pkg, nome, meses){
+    const cols=["Categoria","Item","Unidade","Quantidade","Valor_unitario"]
+      .concat(Array.from({length:meses},(_,i)=>`M${i+1}`)).concat(["Total"]);
+    const rows=pkg.linhas.map(l=>[l.categoria,l.item,l.unidade,l.quantidade,l.valor_unitario].concat(l.meses).concat([l.total]));
+    const total=["TOTAL","","","",""].concat(pkg.somaMes).concat([pkg.somaTotal]);
+    const csv=[cols].concat(rows).concat([total]).map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(',')).join('\n');
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    a.download=`Orcamento_${(nome||'Projeto').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)}_${Date.now()}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  document.getElementById("dlXlsx").addEventListener("click",()=>{ if(ultimo) baixarXLSX(ultimo, document.getElementById("nomeProjeto").value, mesesSel); });
+  document.getElementById("dlCsv").addEventListener("click",()=>{ if(ultimo) baixarCSV(ultimo, document.getElementById("nomeProjeto").value, mesesSel); });
+
+  document.getElementById("frm").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const statusEl=document.querySelector(".status");
+    try{
+      statusEl.textContent="Processando";
+      const nomeProjeto=norm(document.getElementById("nomeProjeto").value);
+      const meses=parseInt(document.getElementById("dur").value||"12",10); mesesSel=meses;
+      const observacoes=norm(document.getElementById("obs").value);
+      const file=document.getElementById("mlfile").files?.[0];
+      if(!nomeProjeto||!file||!meses) throw new Error("Preencha nome, duração e anexe o XLSX.");
+
+      const buf=await file.arrayBuffer();
+      const payload={ nomeProjeto, meses, observacoes, ml_xlsx_b64: btoa(String.fromCharCode(...new Uint8Array(buf))) };
+
+      const resp=await fetch(WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+      if(!resp.ok) throw new Error("Falha no processamento do orçamento");
+      const data=await resp.json(); // Webhook response deve devolver JSON já descompactado
+      // Esperado: { linhas:[...], somaMes:[...], somaTotal:number }
+      ultimo=data;
+      renderTabela(data, meses);
+      statusEl.textContent="✓ OK"; statusEl.classList.add("success");
+    }catch(err){
+      statusEl.textContent="Erro: "+err.message; statusEl.classList.add("error");
+    }
+  });
+</script>
 </body>
 </html>
 
