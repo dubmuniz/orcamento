@@ -17,6 +17,7 @@
     input,textarea,select{width:100%;border:1px solid #d8dee4;border-radius:8px;padding:10px;font:inherit}
     .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
     button{background:var(--green);color:#fff;border:0;border-radius:10px;padding:12px 18px;font-weight:600;cursor:pointer;font-size:16px}
+    button:disabled{opacity:0.6;cursor:not-allowed}
     .status{min-height:22px;color:var(--muted);margin:10px 0 0;font-size:14px}.status.error{color:#c62828}.status.success{color:var(--green)}
     .table{margin-top:14px;background:#fff;border:1px solid #eee;border-radius:10px;overflow:auto}
     table{width:100%;border-collapse:collapse;font-size:13px}
@@ -55,7 +56,7 @@
     <input type="file" id="mlfile" accept=".xlsx,.xls" required/>
 
     <div class="right" style="margin-top:12px">
-      <button id="btn">Gerar Orçamento</button>
+      <button type="submit" id="btn">Gerar Orçamento</button>
     </div>
     <p class="status"></p>
   </form>
@@ -69,10 +70,9 @@
   </div>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-  const WEBHOOK_URL = "https://hook.us2.make.com/uy3iducn5a5e819ux7cmoh9jjh82h33x"; // seu webhook Make (que devolve o JSON final)
+  const WEBHOOK_URL = "https://hook.us2.make.com/uy3iducn5a5e819ux7cmoh9jjh82h33x";
 
   const moeda = v => Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(v);
   const norm = s => String(s||"").replace(/\s+/g," ").trim();
@@ -86,6 +86,7 @@
     trh.innerHTML = `<th>Categoria</th><th>Item</th><th>Unid.</th><th>Qtd.</th><th>Vlr unit.</th>`
       + Array.from({length:meses},(_,i)=>`<th>M${i+1}</th>`).join("") + `<th>Total</th>`;
     thead.appendChild(trh);
+    
     for(const l of pkg.linhas){
       const tr=document.createElement("tr");
       tr.innerHTML =
@@ -95,6 +96,7 @@
         + `<td><b>${moeda(l.total)}</b></td>`;
       tbody.appendChild(tr);
     }
+    
     const trT=document.createElement("tr");
     trT.classList.add("sub");
     trT.innerHTML = `<td colspan="5"><b>TOTAL</b></td>`
@@ -115,16 +117,16 @@
     const totalRow = aoa.length+1;
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    // Fórmulas de somatório por coluna M1..Mn e Total
+    
     const colIdx = c => XLSX.utils.encode_col(c);
     const lastDataRow = totalRow-1;
-    // Total por coluna M1..Mn
+    
     for(let m=0;m<meses;m++){
-      const col = 5+m; // 0:A,1:B,2:C,3:D,4:E(valor_unit),5:first month
+      const col = 5+m;
       ws[XLSX.utils.encode_cell({r:totalRow-1,c:col})] = { t:'n', f:`SUM(${colIdx(col)}${startRow}:${colIdx(col)}${lastDataRow})` };
     }
-    // Total geral
-    const lastCol = 5+meses; // coluna do Total por linha
+    
+    const lastCol = 5+meses;
     ws[XLSX.utils.encode_cell({r:totalRow-1,c:lastCol})] = { t:'n', f:`SUM(${colIdx(lastCol)}${startRow}:${colIdx(lastCol)}${lastDataRow})` };
     ws['!cols']=[{wch:22},{wch:36},{wch:10},{wch:10},{wch:14}]
       .concat(Array.from({length:meses},()=>({wch:14}))).concat([{wch:16}]);
@@ -151,33 +153,54 @@
   document.getElementById("frm").addEventListener("submit", async e=>{
     e.preventDefault();
     const statusEl=document.querySelector(".status");
+    const btn=document.getElementById("btn");
+    
     try{
-      statusEl.textContent="Processando";
+      btn.disabled=true;
+      statusEl.textContent="Processando...";
+      statusEl.className="status";
+      
       const nomeProjeto=norm(document.getElementById("nomeProjeto").value);
       const meses=parseInt(document.getElementById("dur").value||"12",10); mesesSel=meses;
       const observacoes=norm(document.getElementById("obs").value);
       const file=document.getElementById("mlfile").files?.[0];
+      
       if(!nomeProjeto||!file||!meses) throw new Error("Preencha nome, duração e anexe o XLSX.");
 
       const buf=await file.arrayBuffer();
-      const payload={ nomeProjeto, meses, observacoes, ml_xlsx_b64: btoa(String.fromCharCode(...new Uint8Array(buf))) };
+      const payload={ 
+        nomeProjeto, 
+        meses, 
+        observacoes, 
+        ml_xlsx_b64: btoa(String.fromCharCode(...new Uint8Array(buf))) 
+      };
 
-      const resp=await fetch(WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+      const resp=await fetch(WEBHOOK_URL,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(payload)
+      });
+      
       if(!resp.ok) throw new Error("Falha no processamento do orçamento");
-      const data=await resp.json(); // Webhook response deve devolver JSON já descompactado
-      // Esperado: { linhas:[...], somaMes:[...], somaTotal:number }
+      
+      const data=await resp.json();
+      
+      // Validação da resposta
+      if(!data.linhas || !Array.isArray(data.linhas)) throw new Error("Resposta inválida do servidor");
+      
       ultimo=data;
       renderTabela(data, meses);
-      statusEl.textContent="✓ OK"; statusEl.classList.add("success");
+      statusEl.textContent="✓ Orçamento gerado com sucesso!"; 
+      statusEl.classList.add("success");
+      
     }catch(err){
-      statusEl.textContent="Erro: "+err.message; statusEl.classList.add("error");
+      console.error(err);
+      statusEl.textContent="❌ Erro: "+err.message; 
+      statusEl.classList.add("error");
+    }finally{
+      btn.disabled=false;
     }
   });
 </script>
 </body>
 </html>
-
-
-
-
-
